@@ -65,7 +65,17 @@ func buildCloudConfig(script io.Reader, service io.Reader) (string, error) {
 		"echo \"Starting startup service...\"",
 		"systemctl daemon-reload",
 		"systemctl --no-block start customizer.service",
+		"systemctl --no-block start resize-oem.service",
 	}
+
+	cloudConfig["bootcmd"] = []string{
+		"echo \"Resizing OEM partition file system...\"",
+		"umount /dev/sda8",
+		"e2fsck -fp /dev/sda8",
+		"resize2fs /dev/sda8",
+		"systemctl start usr-share-oem.mount",
+	}
+
 	cloudConfigYaml, err := yaml.Marshal(&cloudConfig)
 	if err != nil {
 		return "", err
