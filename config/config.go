@@ -66,6 +66,7 @@ type Build struct {
 	Project   string
 	Zone      string
 	DiskSize  int
+	OEMSize   string
 	GPUType   string
 	Timeout   string
 	GCSFiles  []string

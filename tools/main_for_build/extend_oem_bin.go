@@ -8,7 +8,7 @@ import (
 )
 
 // main generates binary file to extend the OEM partition
-// cmd: GOOS=linux GOARCH=amd64 CGO_ENABLE=0 go build -o extend-oem.bin extend_oem_bin.go
+// cmd: GOOS=linux GOARCH=amd64 CGO_ENABLE=0 go build -o ./../../data/builtin_build_context/extend-oem.bin extend_oem_bin.go
 func main() {
 	args := os.Args
 	if len(args) != 5 {
@@ -18,10 +18,12 @@ func main() {
 	statePartNum, err := strconv.Atoi(args[2])
 	if err != nil {
 		log.Println("error: the 2nd argument statePartNum must be an int")
+		return
 	}
-	oemPartNum, err := strconv.Atoi(args[2])
+	oemPartNum, err := strconv.Atoi(args[3])
 	if err != nil {
 		log.Println("error: the 3rd argument oemPartNum must be an int")
+		return
 	}
 	tools.ExtendOEMPartition(args[1], statePartNum, oemPartNum, args[4])
 }

@@ -71,6 +71,21 @@ func ConvertSizeToBytes(size string) (int, error) {
 	return res, nil
 }
 
+// ConvertSizeToGB converts input size to GB unit.
+// If less than 1 GB, it is rounded up to 1 GB.
+// Used by Daisy workflow to resize the disk.
+func ConvertSizeToGB(size string) (int, error) {
+	sizeByte, err := ConvertSizeToBytes(size)
+	if err != nil {
+		return -1, err
+	}
+	sizeGB := sizeByte >> 30
+	if sizeGB <= 0 {
+		sizeGB = 1
+	}
+	return sizeGB, nil
+}
+
 // PartNumIntToString converts input int partNumInt into string,
 // if disk ends with number, add 'p' to the front.
 // Example: /dev/loop5p1

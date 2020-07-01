@@ -141,6 +141,63 @@ fetch_builtin_ctx() {
   echo "Done fetching builtin build context"
 }
 
+# need to forcefully stop journald service to unmount stateful partition.
+create_systemd_journald_override_conf() {
+        mkdir -p /etc/systemd/system/systemd-journald.service.d
+        cat > /etc/systemd/system/systemd-journald.service.d/override.conf<<EOF
+[Service]
+Restart=no
+EOF
+}
+
+# this unit runs at shutdown time after everything but /tmp is unmounted
+create_run_after_unmount_unit(){
+  cat > /etc/systemd/system/last-run.service<<EOF
+[Unit]
+Description=Run after everything unmounted
+DefaultDependencies=false
+Conflicts=shutdown.target
+Before=shutdown.target multi-user.target mnt-stateful_partition.mount var.mount mnt-disks.mount var-lib-docker.mount var-lib-toolbox.mount usr-share-oem.mount
+After=tmp.mount
+
+[Service]
+Type=oneshot
+RemainAfterExit=true
+ExecStart=/bin/true
+EOF
+
+  # get oem_size user input from meatadata
+  local -r oem_size="$(/usr/share/google/get_metadata_value \
+    attributes/OEMSize)"
+  echo "ExecStop=/tmp/extend-oem.bin /dev/sda 1 8 ${oem_size}" >> /etc/systemd/system/last-run.service
+
+  cat >> /etc/systemd/system/last-run.service<<EOF
+TimeoutStopSec=600
+EOF
+}
+
+extend_oem_partition(){
+  
+  # make condition check here
+
+
+  create_systemd_journald_override_conf
+
+  /usr/bin/systemctl daemon-reload
+  /usr/bin/systemctl stop systemd-journald.socket
+  /usr/bin/systemctl stop systemd-journald-dev-log.socket
+  /usr/bin/systemctl stop systemd-journald-audit.socket
+  /usr/bin/systemctl stop syslog.socket
+  /usr/bin/systemctl stop systemd-journald.service
+
+  mv builtin_ctx_dir/extend-oem.bin /tmp/extend-oem.bin
+
+  create_run_after_unmount_unit
+
+  systemctl start last-run.service
+  # reboot
+}
+
 fetch_state_file() {
   if [[ -e "state_file" ]]; then
     echo "state file already exists"
@@ -241,6 +298,7 @@ main() {
   echo "Downloading source artifacts from GCS..."
   fetch_user_ctx
   fetch_builtin_ctx
+  # extend_oem_partition
   fetch_state_file
   docker rmi "${PYTHON_IMG}" || :
   echo "Successfully downloaded source artifacts from GCS."
