@@ -66,10 +66,10 @@ type Build struct {
 	Project   string
 	Zone      string
 	DiskSize  int
-	OEMSize   string
-	GPUType   string
-	Timeout   string
-	GCSFiles  []string
+	// OEMSize   string
+	GPUType  string
+	Timeout  string
+	GCSFiles []string
 }
 
 // Save serializes the given struct as JSON and writes it out.

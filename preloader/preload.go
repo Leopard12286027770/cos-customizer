@@ -32,7 +32,6 @@ import (
 
 	"cos-customizer/config"
 	"cos-customizer/fs"
-	"cos-customizer/tools/partutil"
 
 	"cloud.google.com/go/storage"
 	yaml "gopkg.in/yaml.v2"
@@ -67,15 +66,6 @@ func buildCloudConfig(script io.Reader, service io.Reader) (string, error) {
 		"systemctl daemon-reload",
 		"systemctl --no-block start customizer.service",
 	}
-
-	cloudConfig["bootcmd"] = []string{
-		"echo \"Resizing OEM partition file system...\"",
-		"umount /dev/sda8",
-		"e2fsck -fp /dev/sda8",
-		"resize2fs /dev/sda8",
-		"systemctl start usr-share-oem.mount",
-	}
-
 	cloudConfigYaml, err := yaml.Marshal(&cloudConfig)
 	if err != nil {
 		return "", err
@@ -228,24 +218,6 @@ func daisyArgs(ctx context.Context, gcs *gcsManager, files *fs.Files, input *con
 		return nil, err
 	}
 	var args []string
-
-	// disk extension include the need for the OEM partition and the stateful partition,
-	// so if OEM size is set, the disk size will be 10+OEMSize(GB) GB if buildSpec.DiskSize is 0,
-	// or buildSpec.DiskSize+OEMSize(GB) if buildSpec.DiskSize is set by user
-	if buildSpec.OEMSize != "" {
-		const ORIDISK = 10
-		args = append(args, "-var:oem_size", buildSpec.OEMSize)
-		oemSizeGB, err := partutil.ConvertSizeToGB(buildSpec.OEMSize)
-		if err != nil {
-			return args, fmt.Errorf("cannot parse OEM size, "+
-				"input:%s, error msg: %v", buildSpec.OEMSize, err)
-		}
-		if buildSpec.DiskSize != 0 {
-			buildSpec.DiskSize += oemSizeGB
-		} else {
-			buildSpec.DiskSize = ORIDISK + oemSizeGB
-		}
-	}
 	if buildSpec.DiskSize != 0 {
 		args = append(args, "-var:disk_size_gb", strconv.Itoa(buildSpec.DiskSize))
 	}

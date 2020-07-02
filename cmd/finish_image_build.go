@@ -45,7 +45,6 @@ type FinishImageBuild struct {
 	labels         *mapVar
 	licenses       *listVar
 	inheritLabels  bool
-	oemSize        string
 	diskSize       int
 	timeout        time.Duration
 }
@@ -94,9 +93,6 @@ func (f *FinishImageBuild) SetFlags(flags *flag.FlagSet) {
 	flags.BoolVar(&f.inheritLabels, "inherit-labels", false, "Indicates if the result image should inherit labels "+
 		"from the source image. Labels specified through the '-labels' flag take precedence over inherited "+
 		"labels.")
-	flags.StringVar(&f.oemSize, "oem-size", "", "Size of the new OEM partition, "+
-		"can be a number with unit like 10G, 10M, 10K or 10B, "+
-		"or without unit indicating the number of 512B sectors.")
 	flags.IntVar(&f.diskSize, "disk-size-gb", 0, "The disk size to use when creating the image in GB. Value of '0' "+
 		"indicates the default size.")
 	flags.DurationVar(&f.timeout, "timeout", time.Hour, "Timeout value of the image build process. Must be formatted "+
@@ -139,7 +135,6 @@ func (f *FinishImageBuild) loadConfigs(files *fs.Files) (*config.Image, *config.
 	buildConfig.Zone = f.zone
 	buildConfig.DiskSize = f.diskSize
 	buildConfig.Timeout = f.timeout.String()
-	buildConfig.OEMSize = f.oemSize
 	outputImageConfig := config.NewImage(imageName, f.imageProject)
 	outputImageConfig.Labels = f.labels.m
 	outputImageConfig.Licenses = f.licenses.l
