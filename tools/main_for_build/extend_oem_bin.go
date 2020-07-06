@@ -25,5 +25,8 @@ func main() {
 		log.Println("error: the 3rd argument oemPartNum must be an int")
 		return
 	}
-	tools.ExtendOEMPartition(args[1], statePartNum, oemPartNum, args[4])
+	err = tools.ExtendOEMPartition(args[1], statePartNum, oemPartNum, args[4])
+	if err != nil {
+		log.Println(err)
+	}
 }

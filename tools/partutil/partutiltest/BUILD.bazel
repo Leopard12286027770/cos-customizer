@@ -17,35 +17,19 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 go_library(
     name = "go_default_library",
     srcs = [
-        "gcs.go",
-        "preload.go",
     ],
-    importpath = "cos-customizer/preloader",
+    importpath = "cos-customizer/tools/partutil/partutiltest",
     visibility = ["//visibility:public"],
     deps = [
-        "//config:go_default_library",
-        "//fs:go_default_library",
-        "//tools/partutil:go_default_library",
-        "@com_google_cloud_go//storage:go_default_library",
-        "@in_gopkg_yaml_v2//:go_default_library",
-        "@org_golang_google_api//iterator:go_default_library",
+
     ],
 )
 
 go_test(
     name = "go_default_test",
     srcs = [
-        "gcs_test.go",
-        "preload_test.go",
     ],
     embed = [":go_default_library"],
     deps = [
-        "//config:go_default_library",
-        "//fakes:go_default_library",
-        "//fs:go_default_library",
-        "@com_github_google_go-cmp//cmp:go_default_library",
-        "@com_github_google_go-cmp//cmp/cmpopts:go_default_library",
-        "@in_gopkg_yaml_v2//:go_default_library",
-        "@org_golang_google_api//compute/v1:go_default_library",
     ],
 )

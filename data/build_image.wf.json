@@ -5,7 +5,8 @@
     "output_image_name": {"Required": true, "Description": "Name of output image."},
     "output_image_family": {"Value": "", "Description": "Family of output image."},
     "output_image_project": {"Required": true, "Description": "Project of output image."},
-    "disk_size_gb": {"Value": "10", "Description": "The disk size to use for preloading."},
+    "disk_size_gb": {"Value": "11", "Description": "The disk size to use for preloading."},
+    "oem_size":{"Value":"","Description": "The size for extended OEM partition."},
     "host_maintenance": {"Value": "MIGRATE", "Description": "VM behavior when there is maintenance."},
     "user_build_context": {"Required": true, "Description": "GCS URL of the user build context."},
     "builtin_build_context": {"Required": true, "Description": "GCS URL of the builtin build context."},
@@ -26,10 +27,11 @@
         {
           "Name": "boot-disk",
           "SourceImage": "${source_image}",
-          "SizeGb": "${disk_size_gb}"
+          "SizeGb": "10"
         }
       ]
     },
+
     "run": {
       "CreateInstances": [
         {
@@ -45,6 +47,7 @@
             "StateFile": "${state_file}",
             "GCSFiles": "${gcs_files}",
             "DaisyAck": "${SCRATCHPATH}/daisy_ack",
+            "OEMSize":  "${oem_size}",
             "user-data": "${SOURCE:cloud-config}",
             "block-project-ssh-keys": "TRUE",
             "cos-update-strategy": "update_disabled"
@@ -73,6 +76,28 @@
         {
           "Source": "${SOURCESPATH}/daisy_ack",
           "Destination": "${SCRATCHPATH}/daisy_ack"
+        }
+      ]
+    },
+    "resize-disk":{
+      "ResizeDisks": [
+        {
+          "Name": "boot-disk",
+          "SizeGb": "12"
+        }
+      ]
+    },
+    "wait-extend-oem":{
+      "WaitForInstancesSignal": [
+        {
+          "Name": "preload-vm",
+          "Interval": "10s",
+          "SerialOutput": {
+            "Port": 3,
+            "FailureMatch": "BuildFailed:",
+            "SuccessMatch": "Successfully extended OEM partition",
+            "StatusMatch": "BuildStatus:"
+          }
         }
       ]
     },
@@ -118,7 +143,9 @@
     "run": ["setup"],
     "wait-preload-start": ["run"],
     "send-ack": ["wait-preload-start"],
-    "wait-preload-finished": ["send-ack"],
+    "resize-disk":["send-ack"],
+    "wait-extend-oem":["resize-disk"],
+    "wait-preload-finished": ["wait-extend-oem"],
     "wait-vm-shutdown": ["wait-preload-finished"],
     "image": ["wait-vm-shutdown"]
   }

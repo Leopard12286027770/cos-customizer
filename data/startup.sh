@@ -142,23 +142,32 @@ fetch_builtin_ctx() {
 }
 
 # need to forcefully stop journald service to unmount stateful partition.
-create_systemd_journald_override_conf() {
-        mkdir -p /etc/systemd/system/systemd-journald.service.d
-        cat > /etc/systemd/system/systemd-journald.service.d/override.conf<<EOF
+stop_journald_service() {
+  mkdir -p /etc/systemd/system/systemd-journald.service.d
+  cat > /etc/systemd/system/systemd-journald.service.d/override.conf<<EOF
 [Service]
 Restart=no
 EOF
+
+  /usr/bin/systemctl daemon-reload
+  /usr/bin/systemctl stop systemd-journald.socket
+  /usr/bin/systemctl stop systemd-journald-dev-log.socket
+  /usr/bin/systemctl stop systemd-journald-audit.socket
+  /usr/bin/systemctl stop syslog.socket
+  /usr/bin/systemctl stop systemd-journald.service
 }
 
 # this unit runs at shutdown time after everything but /tmp is unmounted
 create_run_after_unmount_unit(){
+  mkdir /tmp/last
+  mount -t tmpfs tmpfslast /tmp/last
   cat > /etc/systemd/system/last-run.service<<EOF
 [Unit]
 Description=Run after everything unmounted
 DefaultDependencies=false
 Conflicts=shutdown.target
 Before=shutdown.target multi-user.target mnt-stateful_partition.mount var.mount mnt-disks.mount var-lib-docker.mount var-lib-toolbox.mount usr-share-oem.mount
-After=tmp.mount
+After=tmp-last.mount
 
 [Service]
 Type=oneshot
@@ -169,33 +178,40 @@ EOF
   # get oem_size user input from meatadata
   local -r oem_size="$(/usr/share/google/get_metadata_value \
     attributes/OEMSize)"
-  echo "ExecStop=/tmp/extend-oem.bin /dev/sda 1 8 ${oem_size}" >> /etc/systemd/system/last-run.service
+  echo "ExecStop=/tmp/last/extend-oem.bin /dev/sda 1 8 ${oem_size}" >> /etc/systemd/system/last-run.service
+  # echo "ExecStop=/tmp/last/extend-oem.bin /dev/sda 1 8 500M" >> /etc/systemd/system/last-run.service
 
   cat >> /etc/systemd/system/last-run.service<<EOF
 TimeoutStopSec=600
+StandardOutput=tty
+StandardError=tty
+TTYPath=/dev/ttyS2
 EOF
 }
 
 extend_oem_partition(){
+  local -r oem_check_file="/mnt/stateful_partition/oem"
+  echo "Checking whether need to extend OEM partition..."
+
+  #check whether need to extend OEM partition
+  if [[ -e "${oem_check_file}" ]]; then
+    rm "${oem_check_file}"
+    fdisk -l
+    df -h
+    echo "Successfully extended OEM partition."
+  else
+    touch "${oem_check_file}"
+    echo "Extending OEM partition..."
+    create_run_after_unmount_unit
+    mv builtin_ctx_dir/extend-oem.bin /tmp/last/extend-oem.bin
+    systemctl start last-run.service
+    stop_journald_service
+    trap - EXIT
+    echo "Rebooting..."
+    reboot
+  fi
+
   
-  # make condition check here
-
-
-  create_systemd_journald_override_conf
-
-  /usr/bin/systemctl daemon-reload
-  /usr/bin/systemctl stop systemd-journald.socket
-  /usr/bin/systemctl stop systemd-journald-dev-log.socket
-  /usr/bin/systemctl stop systemd-journald-audit.socket
-  /usr/bin/systemctl stop syslog.socket
-  /usr/bin/systemctl stop systemd-journald.service
-
-  mv builtin_ctx_dir/extend-oem.bin /tmp/extend-oem.bin
-
-  create_run_after_unmount_unit
-
-  systemctl start last-run.service
-  # reboot
 }
 
 fetch_state_file() {
@@ -298,7 +314,7 @@ main() {
   echo "Downloading source artifacts from GCS..."
   fetch_user_ctx
   fetch_builtin_ctx
-  # extend_oem_partition
+  extend_oem_partition
   fetch_state_file
   docker rmi "${PYTHON_IMG}" || :
   echo "Successfully downloaded source artifacts from GCS."

@@ -130,3 +130,80 @@ func TestPartNumIntToStringPasses(t *testing.T) {
 		})
 	}
 }
+
+func TestConvertSizeToGBFails(t *testing.T) {
+	testData := []struct {
+		testName string
+		input    string
+	}{
+		{
+			testName: "InvalidSuffix",
+			input:    "10T",
+		}, {
+			testName: "InvalidNumber",
+			input:    "56AXM",
+		}, {
+			testName: "EmptyString",
+			input:    "",
+		}, {
+			testName: "IntOverflow",
+			input:    "654654654654654654654654654654654654654654654654321321654654654",
+		},
+	}
+
+	for _, input := range testData {
+		t.Run(input.testName, func(t *testing.T) {
+			_, err := ConvertSizeToGB(input.input)
+			if err == nil {
+				t.Fatalf("error not found in test %s", input.testName)
+			}
+		})
+	}
+}
+
+func TestConvertSizeToGBPasses(t *testing.T) {
+	testData := []struct {
+		testName string
+		input    string
+		want     int
+	}{
+		{
+			testName: "ValidInputSector",
+			input:    "4194304",
+			want:     2,
+		}, {
+			testName: "ValidInputB",
+			input:    "4194304B",
+			want:     0,
+		}, {
+			testName: "ValidInputK",
+			input:    "500K",
+			want:     0,
+		}, {
+			testName: "ValidInputM",
+			input:    "456M",
+			want:     0,
+		}, {
+			testName: "ValidInputG",
+			input:    "321G",
+			want:     321,
+		},
+		{
+			testName: "ValidInputM2",
+			input:    "2096M",
+			want:     2,
+		},
+	}
+
+	for _, input := range testData {
+		t.Run(input.testName, func(t *testing.T) {
+			res, err := ConvertSizeToGB(input.input)
+			if err != nil {
+				t.Fatalf("errorin test %s, error msg: (%v)", input.testName, err)
+			}
+			if res != input.want {
+				t.Fatalf("wrong result: %s to %d, expect: %d", input.input, res, input.want)
+			}
+		})
+	}
+}
