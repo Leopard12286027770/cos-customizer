@@ -24,12 +24,9 @@ set -o nounset
 
 PYTHON_IMG="python:2.7.15-alpine"
 OEM_CHECK_FILE="/mnt/stateful_partition/oem"
-TRAP_PREFIX="BuildFailed:"
-
-trap 'fatal exiting due to errors' EXIT
 
 fatal() {
-  echo -e "${TRAP_PREFIX} ${*}"
+  echo -e "BuildFailed: ${*}"
   exit 1
 }
 
@@ -202,7 +199,7 @@ extend_oem_partition(){
     mv builtin_ctx_dir/extend-oem.bin /tmp/last/extend-oem.bin
     systemctl start last-run.service
     stop_journald_service
-    ${TRAP_PREFIX}=""
+    trap - EXIT
     echo "Rebooting..."
     reboot
     while :
@@ -309,6 +306,7 @@ cleanup() {
 }
 
 main() {
+  trap 'fatal exiting due to errors' EXIT
   enter_workdir
   setup
   wait_daisy_logging
@@ -317,6 +315,7 @@ main() {
   fetch_builtin_ctx
   trap - EXIT
   extend_oem_partition
+  trap 'fatal exiting due to errors' EXIT
   fetch_state_file
   docker rmi "${PYTHON_IMG}" || :
   echo "Successfully downloaded source artifacts from GCS."
