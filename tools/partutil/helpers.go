@@ -71,17 +71,17 @@ func ConvertSizeToBytes(size string) (int, error) {
 	return res, nil
 }
 
-// ConvertSizeToGB converts input size to GB unit.
-// Round down, since daisy resize disk by default gives 1 more GB.
+// ConvertSizeToGBRoundUp converts input size to GB unit.
+// Rounded up, since extend disk can only take GB unit.
 // Used by Daisy workflow to resize the disk.
-func ConvertSizeToGB(size string) (int, error) {
+func ConvertSizeToGBRoundUp(size string) (int, error) {
 	sizeByte, err := ConvertSizeToBytes(size)
 	if err != nil {
 		return -1, err
 	}
 	sizeGB := sizeByte >> 30
-	if sizeGB <= 0 {
-		sizeGB = 0
+	if (sizeGB << 30) != sizeByte {
+		sizeGB++
 	}
 	return sizeGB, nil
 }

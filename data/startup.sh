@@ -21,12 +21,15 @@ set -o errexit
 set -o pipefail
 set -o nounset
 
-trap 'fatal exiting due to errors' EXIT
 
 PYTHON_IMG="python:2.7.15-alpine"
+OEM_CHECK_FILE="/mnt/stateful_partition/oem"
+TRAP_PREFIX="BuildFailed:"
+
+trap 'fatal exiting due to errors' EXIT
 
 fatal() {
-  echo -e "BuildFailed: ${*}"
+  echo -e "${TRAP_PREFIX} ${*}"
   exit 1
 }
 
@@ -161,6 +164,9 @@ EOF
 create_run_after_unmount_unit(){
   mkdir /tmp/last
   mount -t tmpfs tmpfslast /tmp/last
+  # get oem_size user input from meatadata
+  local -r oem_size="$(/usr/share/google/get_metadata_value \
+    attributes/OEMSize)"
   cat > /etc/systemd/system/last-run.service<<EOF
 [Unit]
 Description=Run after everything unmounted
@@ -173,15 +179,7 @@ After=tmp-last.mount
 Type=oneshot
 RemainAfterExit=true
 ExecStart=/bin/true
-EOF
-
-  # get oem_size user input from meatadata
-  local -r oem_size="$(/usr/share/google/get_metadata_value \
-    attributes/OEMSize)"
-  echo "ExecStop=/tmp/last/extend-oem.bin /dev/sda 1 8 ${oem_size}" >> /etc/systemd/system/last-run.service
-  # echo "ExecStop=/tmp/last/extend-oem.bin /dev/sda 1 8 500M" >> /etc/systemd/system/last-run.service
-
-  cat >> /etc/systemd/system/last-run.service<<EOF
+ExecStop=/tmp/last/extend-oem.bin /dev/sda 1 8 ${oem_size}
 TimeoutStopSec=600
 StandardOutput=tty
 StandardError=tty
@@ -190,25 +188,27 @@ EOF
 }
 
 extend_oem_partition(){
-  local -r oem_check_file="/mnt/stateful_partition/oem"
   echo "Checking whether need to extend OEM partition..."
 
   #check whether need to extend OEM partition
-  if [[ -e "${oem_check_file}" ]]; then
-    rm "${oem_check_file}"
+  if [[ -e "${OEM_CHECK_FILE}" ]]; then
     fdisk -l
     df -h
     echo "Successfully extended OEM partition."
   else
-    touch "${oem_check_file}"
+    touch "${OEM_CHECK_FILE}"
     echo "Extending OEM partition..."
     create_run_after_unmount_unit
     mv builtin_ctx_dir/extend-oem.bin /tmp/last/extend-oem.bin
     systemctl start last-run.service
     stop_journald_service
-    trap - EXIT
+    ${TRAP_PREFIX}=""
     echo "Rebooting..."
     reboot
+    while :
+      do
+        sleep 1
+      done
   fi
 
   
@@ -304,6 +304,7 @@ cleanup() {
   rm -rf /var/lib/systemd/*
   rm -rf /var/lib/update_engine/*
   rm -rf /var/lib/whitelist/*
+  rm -f OEM_CHECK_FILE
   echo "Done cleaning up instance state."
 }
 
@@ -314,6 +315,7 @@ main() {
   echo "Downloading source artifacts from GCS..."
   fetch_user_ctx
   fetch_builtin_ctx
+  trap - EXIT
   extend_oem_partition
   fetch_state_file
   docker rmi "${PYTHON_IMG}" || :

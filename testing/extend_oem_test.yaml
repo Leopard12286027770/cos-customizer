@@ -14,7 +14,7 @@
 
 substitutions:
   "_TEST": "extend_oem_test"
-  "_INPUT_IMAGE": "cos-stable"
+  "_INPUT_IMAGE": "cos-81-12871-148-0"
   "_INPUT_PROJECT": "cos-cloud"
 steps:
 - name: 'gcr.io/cloud-builders/bazel'
@@ -22,20 +22,19 @@ steps:
 - name: 'bazel:cos_customizer'
   args: ["start-image-build",
          "-build-context=testing/${_TEST}",
-         "-image-family=${_INPUT_IMAGE}",
+        #  "-image-family=${_INPUT_IMAGE}",
+        "-image-name=${_INPUT_IMAGE}",
          "-image-project=${_INPUT_PROJECT}",
          "-gcs-bucket=${PROJECT_ID}_cloudbuild",
          "-gcs-workdir=customizer-$BUILD_ID"]
-- name: 'bazel:cos_customizer'
-  args: ["run-script",
-         "-script=preload.sh"]
 - name: 'bazel:cos_customizer'
   args: ["finish-image-build",
          "-zone=us-west1-b",
          "-project=$PROJECT_ID",
          "-image-name=preload-test-$BUILD_ID",
          "-image-project=$PROJECT_ID",
-         "-oem-size=500M"]
+         "-disk-size-gb=12",
+         "-oem-size=2000M"]
 options:
   machineType: 'N1_HIGHCPU_8'
 timeout: "1800s"

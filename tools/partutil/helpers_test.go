@@ -131,7 +131,7 @@ func TestPartNumIntToStringPasses(t *testing.T) {
 	}
 }
 
-func TestConvertSizeToGBFails(t *testing.T) {
+func TestConvertSizeToGBRoundUpFails(t *testing.T) {
 	testData := []struct {
 		testName string
 		input    string
@@ -153,7 +153,7 @@ func TestConvertSizeToGBFails(t *testing.T) {
 
 	for _, input := range testData {
 		t.Run(input.testName, func(t *testing.T) {
-			_, err := ConvertSizeToGB(input.input)
+			_, err := ConvertSizeToGBRoundUp(input.input)
 			if err == nil {
 				t.Fatalf("error not found in test %s", input.testName)
 			}
@@ -161,7 +161,7 @@ func TestConvertSizeToGBFails(t *testing.T) {
 	}
 }
 
-func TestConvertSizeToGBPasses(t *testing.T) {
+func TestConvertSizeToGBRoundUpPasses(t *testing.T) {
 	testData := []struct {
 		testName string
 		input    string
@@ -174,15 +174,15 @@ func TestConvertSizeToGBPasses(t *testing.T) {
 		}, {
 			testName: "ValidInputB",
 			input:    "4194304B",
-			want:     0,
+			want:     1,
 		}, {
 			testName: "ValidInputK",
 			input:    "500K",
-			want:     0,
+			want:     1,
 		}, {
 			testName: "ValidInputM",
 			input:    "456M",
-			want:     0,
+			want:     1,
 		}, {
 			testName: "ValidInputG",
 			input:    "321G",
@@ -191,13 +191,13 @@ func TestConvertSizeToGBPasses(t *testing.T) {
 		{
 			testName: "ValidInputM2",
 			input:    "2096M",
-			want:     2,
+			want:     3,
 		},
 	}
 
 	for _, input := range testData {
 		t.Run(input.testName, func(t *testing.T) {
-			res, err := ConvertSizeToGB(input.input)
+			res, err := ConvertSizeToGBRoundUp(input.input)
 			if err != nil {
 				t.Fatalf("errorin test %s, error msg: (%v)", input.testName, err)
 			}

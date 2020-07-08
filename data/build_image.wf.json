@@ -71,19 +71,19 @@
         }
       ]
     },
-    "send-ack": {
-      "CopyGCSObjects": [
-        {
-          "Source": "${SOURCESPATH}/daisy_ack",
-          "Destination": "${SCRATCHPATH}/daisy_ack"
-        }
-      ]
-    },
     "resize-disk":{
       "ResizeDisks": [
         {
           "Name": "boot-disk",
           "SizeGb": "12"
+        }
+      ]
+    },
+    "send-ack": {
+      "CopyGCSObjects": [
+        {
+          "Source": "${SOURCESPATH}/daisy_ack",
+          "Destination": "${SCRATCHPATH}/daisy_ack"
         }
       ]
     },
@@ -142,9 +142,9 @@
   "Dependencies": {
     "run": ["setup"],
     "wait-preload-start": ["run"],
-    "send-ack": ["wait-preload-start"],
-    "resize-disk":["send-ack"],
-    "wait-extend-oem":["resize-disk"],
+    "resize-disk":["wait-preload-start"],
+    "send-ack": ["resize-disk"],
+    "wait-extend-oem":["send-ack"],
     "wait-preload-finished": ["wait-extend-oem"],
     "wait-vm-shutdown": ["wait-preload-finished"],
     "image": ["wait-vm-shutdown"]

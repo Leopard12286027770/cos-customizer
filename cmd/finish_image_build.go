@@ -26,6 +26,7 @@ import (
 	"cos-customizer/fs"
 	"cos-customizer/gce"
 	"cos-customizer/preloader"
+	"cos-customizer/tools/partutil"
 
 	"github.com/google/subcommands"
 )
@@ -104,6 +105,16 @@ func (f *FinishImageBuild) SetFlags(flags *flag.FlagSet) {
 }
 
 func (f *FinishImageBuild) validate() error {
+	const IMGSIZE = 10
+	if f.oemSize != "" {
+		oemSizeGB, err := partutil.ConvertSizeToGBRoundUp(f.oemSize)
+		if err != nil {
+			return fmt.Errorf("invalid format of oem-size, error msg:(%v)", err)
+		}
+		if f.diskSize-oemSizeGB < IMGSIZE {
+			return fmt.Errorf("'disk-size-gb' must be at least 'oem-size' + 10GB")
+		}
+	}
 	switch {
 	case f.imageName == "" && f.imageSuffix == "":
 		return fmt.Errorf("one of 'image-name' or 'image-suffix' must be set")
