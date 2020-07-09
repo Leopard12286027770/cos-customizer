@@ -161,7 +161,7 @@ EOF
 create_run_after_unmount_unit(){
   mkdir /tmp/last
   mount -t tmpfs tmpfslast /tmp/last
-  # get oem_size user input from meatadata
+  # get OEMSize user input from meatadata
   local -r oem_size="$(/usr/share/google/get_metadata_value \
     attributes/OEMSize)"
   cat > /etc/systemd/system/last-run.service<<EOF
@@ -187,28 +187,36 @@ EOF
 extend_oem_partition(){
   echo "Checking whether need to extend OEM partition..."
 
-  #check whether need to extend OEM partition
-  if [[ -e "${OEM_CHECK_FILE}" ]]; then
-    fdisk -l
-    df -h
-    echo "Successfully extended OEM partition."
-  else
-    touch "${OEM_CHECK_FILE}"
-    echo "Extending OEM partition..."
-    create_run_after_unmount_unit
-    mv builtin_ctx_dir/extend-oem.bin /tmp/last/extend-oem.bin
-    systemctl start last-run.service
-    stop_journald_service
-    trap - EXIT
-    echo "Rebooting..."
-    reboot
-    while :
-      do
-        sleep 1
-      done
-  fi
+  # get user input from meatadata
+  local -r oem_size="$(/usr/share/google/get_metadata_value \
+    attributes/OEMSize)"
 
-  
+  if [ ${oem_size} != "" ]; then 
+    if [[ -e "${OEM_CHECK_FILE}" ]]; then
+      fdisk -l
+      df -h
+      echo "Successfully extended OEM partition."
+    else
+      touch "${OEM_CHECK_FILE}"
+      echo "Extending OEM partition..."
+      create_run_after_unmount_unit
+      mv builtin_ctx_dir/extend-oem.bin /tmp/last/extend-oem.bin
+      systemctl start last-run.service
+      stop_journald_service
+      echo "Rebooting..."
+      
+      # overwrite trap to avoid build failure triggered by reboot.
+      trap - EXIT
+      reboot
+      # keep it inside of this function until reboot kills the process
+      while :
+        do
+          sleep 1
+        done
+    fi
+  else
+    echo "No request to change OEM partition."
+  fi
 }
 
 fetch_state_file() {
@@ -313,9 +321,7 @@ main() {
   echo "Downloading source artifacts from GCS..."
   fetch_user_ctx
   fetch_builtin_ctx
-  trap - EXIT
   extend_oem_partition
-  trap 'fatal exiting due to errors' EXIT
   fetch_state_file
   docker rmi "${PYTHON_IMG}" || :
   echo "Successfully downloaded source artifacts from GCS."

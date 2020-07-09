@@ -71,33 +71,14 @@
         }
       ]
     },
-    "resize-disk":{
-      "ResizeDisks": [
-        {
-          "Name": "boot-disk",
-          "SizeGb": "12"
-        }
-      ]
+    "resize-disk":{ 
+      {{.ResizeDisks}}
     },
     "send-ack": {
       "CopyGCSObjects": [
         {
           "Source": "${SOURCESPATH}/daisy_ack",
           "Destination": "${SCRATCHPATH}/daisy_ack"
-        }
-      ]
-    },
-    "wait-extend-oem":{
-      "WaitForInstancesSignal": [
-        {
-          "Name": "preload-vm",
-          "Interval": "10s",
-          "SerialOutput": {
-            "Port": 3,
-            "FailureMatch": "BuildFailed:",
-            "SuccessMatch": "Successfully extended OEM partition",
-            "StatusMatch": "BuildStatus:"
-          }
         }
       ]
     },
@@ -144,8 +125,7 @@
     "wait-preload-start": ["run"],
     "resize-disk":["wait-preload-start"],
     "send-ack": ["resize-disk"],
-    "wait-extend-oem":["send-ack"],
-    "wait-preload-finished": ["wait-extend-oem"],
+    "wait-preload-finished": ["send-ack"],
     "wait-vm-shutdown": ["wait-preload-finished"],
     "image": ["wait-vm-shutdown"]
   }

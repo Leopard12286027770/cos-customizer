@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-echo "hello" > /var/lib/hello
+echo "hello" > /mnt/stateful_partition/hello
 docker_code=0
 i=1
 while [[ $i -le 10 ]]; do

@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"log"
 	"os/exec"
+	"strconv"
 	"time"
 
 	"cos-customizer/config"
@@ -109,11 +110,19 @@ func (f *FinishImageBuild) validate() error {
 	if f.oemSize != "" {
 		oemSizeGB, err := partutil.ConvertSizeToGBRoundUp(f.oemSize)
 		if err != nil {
-			return fmt.Errorf("invalid format of oem-size, error msg:(%v)", err)
+			return fmt.Errorf("invalid format of oem-size: %s, error msg:(%v)", f.oemSize, err)
 		}
 		if f.diskSize-oemSizeGB < IMGSIZE {
 			return fmt.Errorf("'disk-size-gb' must be at least 'oem-size' + 10GB")
 		}
+		oemSizeBytes, err := partutil.ConvertSizeToBytes(f.oemSize)
+		if err != nil {
+			return fmt.Errorf("invalid format of oem-size: %s, error msg:(%v)", f.oemSize, err)
+		}
+
+		// shrink OEM size input (rounded down) by 1M to deal with cases
+		// where disk size is 1M smaller than needed.
+		f.oemSize = strconv.Itoa((oemSizeBytes>>20)-1) + "M"
 	}
 	switch {
 	case f.imageName == "" && f.imageSuffix == "":
