@@ -1,4 +1,4 @@
-# Copyright 2020 Google LLC
+# Copyright 2018 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the License);
 # you may not use this file except in compliance with the License.
@@ -16,14 +16,19 @@ substitutions:
   "_TEST": "extend_oem_test"
   "_INPUT_IMAGE": "cos-81-12871-148-0"
   "_INPUT_PROJECT": "cos-cloud"
+  "_OEM_SIZE": ""
+  "_DISK_SIZE": ""
+  "_OEM_SIZE_TH": ""
 steps:
 - name: 'gcr.io/cloud-builders/bazel'
   args: ["run", "--spawn_strategy=standalone", ":cos_customizer", "--", "--norun"]
+- name: 'busybox'
+  args: ["sed", "-i", "-e", "s|%s|'${_OEM_SIZE_TH}'|",
+         "testing/${_TEST}/preload_test.cfg"]
 - name: 'bazel:cos_customizer'
   args: ["start-image-build",
          "-build-context=testing/${_TEST}",
-        #  "-image-family=${_INPUT_IMAGE}",
-        "-image-name=${_INPUT_IMAGE}",
+         "-image-name=${_INPUT_IMAGE}",
          "-image-project=${_INPUT_PROJECT}",
          "-gcs-bucket=${PROJECT_ID}_cloudbuild",
          "-gcs-workdir=customizer-$BUILD_ID"]
@@ -36,12 +41,12 @@ steps:
          "-project=$PROJECT_ID",
          "-image-name=preload-test-$BUILD_ID",
          "-image-project=$PROJECT_ID",
-         "-disk-size-gb=12",
-         "-oem-size=2G"]
+         "-disk-size-gb=${_DISK_SIZE}",
+         "-oem-size=${_OEM_SIZE}"]
 - name: 'gcr.io/compute-image-tools/daisy'
   args: ["-project=$PROJECT_ID", "-zone=us-west1-b", "-var:image_name",
          "preload-test-$BUILD_ID", "-var:image_project", "$PROJECT_ID",
          "-var:test_cfg", "../${_TEST}/preload_test.cfg", "testing/util/run_test.wf.json"]
 options:
-  machineType: 'N1_HIGHCPU_8'
-timeout: "1800s"
+  machineType: 'N1_HIGHCPU_32'
+timeout: "7200s"
