@@ -36,7 +36,7 @@ steps:
          "-project=$PROJECT_ID",
          "-image-name=preload-test-$BUILD_ID",
          "-image-project=$PROJECT_ID",
-         "-disk-size-gb=11",
+         "-disk-size-gb=12",
          "-oem-size=2G"]
 - name: 'gcr.io/compute-image-tools/daisy'
   args: ["-project=$PROJECT_ID", "-zone=us-west1-b", "-var:image_name",
