@@ -5,7 +5,11 @@
     "output_image_name": {"Required": true, "Description": "Name of output image."},
     "output_image_family": {"Value": "", "Description": "Family of output image."},
     "output_image_project": {"Required": true, "Description": "Project of output image."},
+<<<<<<< HEAD
     "disk_size_gb": {"Value": "11", "Description": "The disk size to use for preloading."},
+=======
+    "disk_size_gb": {"Value": "10", "Description": "The disk size to use for preloading."},
+>>>>>>> integrate-oem-cos-PR
     "oem_size":{"Value":"","Description": "The size for extended OEM partition."},
     "host_maintenance": {"Value": "MIGRATE", "Description": "VM behavior when there is maintenance."},
     "user_build_context": {"Required": true, "Description": "GCS URL of the user build context."},

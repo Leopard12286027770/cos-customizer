@@ -246,11 +246,6 @@ func daisyArgs(ctx context.Context, gcs *gcsManager, files *fs.Files, input *con
 		return nil, err
 	}
 	var args []string
-
-	// disk resize must have a size larger than original disk 10GB, so by default, 11GB.
-	// disk extension include the need for the OEM partition and the stateful partition,
-	// so if OEM size is set, the disk size will be 11+OEMSize(GB) GB if buildSpec.DiskSize is 0,
-	// or buildSpec.DiskSize+OEMSize(GB)+1 if buildSpec.DiskSize is set by user.
 	if buildSpec.OEMSize != "" {
 		args = append(args, "-var:oem_size", buildSpec.OEMSize)
 	}
