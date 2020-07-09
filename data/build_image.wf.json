@@ -6,6 +6,7 @@
     "output_image_family": {"Value": "", "Description": "Family of output image."},
     "output_image_project": {"Required": true, "Description": "Project of output image."},
     "disk_size_gb": {"Value": "10", "Description": "The disk size to use for preloading."},
+    "oem_size":{"Value":"","Description": "The size for extended OEM partition."},
     "host_maintenance": {"Value": "MIGRATE", "Description": "VM behavior when there is maintenance."},
     "user_build_context": {"Required": true, "Description": "GCS URL of the user build context."},
     "builtin_build_context": {"Required": true, "Description": "GCS URL of the builtin build context."},
@@ -26,10 +27,11 @@
         {
           "Name": "boot-disk",
           "SourceImage": "${source_image}",
-          "SizeGb": "${disk_size_gb}"
+          "SizeGb": "10"
         }
       ]
     },
+
     "run": {
       "CreateInstances": [
         {
@@ -45,6 +47,7 @@
             "StateFile": "${state_file}",
             "GCSFiles": "${gcs_files}",
             "DaisyAck": "${SCRATCHPATH}/daisy_ack",
+            "OEMSize":  "${oem_size}",
             "user-data": "${SOURCE:cloud-config}",
             "block-project-ssh-keys": "TRUE",
             "cos-update-strategy": "update_disabled"
@@ -67,6 +70,9 @@
           }
         }
       ]
+    },
+    "resize-disk":{ 
+      {{.ResizeDisks}}
     },
     "send-ack": {
       "CopyGCSObjects": [
@@ -117,7 +123,8 @@
   "Dependencies": {
     "run": ["setup"],
     "wait-preload-start": ["run"],
-    "send-ack": ["wait-preload-start"],
+    "resize-disk":["wait-preload-start"],
+    "send-ack": ["resize-disk"],
     "wait-preload-finished": ["send-ack"],
     "wait-vm-shutdown": ["wait-preload-finished"],
     "image": ["wait-vm-shutdown"]

@@ -20,12 +20,14 @@ import (
 	"fmt"
 	"log"
 	"os/exec"
+	"strconv"
 	"time"
 
 	"cos-customizer/config"
 	"cos-customizer/fs"
 	"cos-customizer/gce"
 	"cos-customizer/preloader"
+	"cos-customizer/tools/partutil"
 
 	"github.com/google/subcommands"
 )
@@ -45,6 +47,7 @@ type FinishImageBuild struct {
 	labels         *mapVar
 	licenses       *listVar
 	inheritLabels  bool
+	oemSize        string
 	diskSize       int
 	timeout        time.Duration
 }
@@ -93,6 +96,9 @@ func (f *FinishImageBuild) SetFlags(flags *flag.FlagSet) {
 	flags.BoolVar(&f.inheritLabels, "inherit-labels", false, "Indicates if the result image should inherit labels "+
 		"from the source image. Labels specified through the '-labels' flag take precedence over inherited "+
 		"labels.")
+	flags.StringVar(&f.oemSize, "oem-size", "", "Size of the new OEM partition, "+
+		"can be a number with unit like 10G, 10M, 10K or 10B, "+
+		"or without unit indicating the number of 512B sectors.")
 	flags.IntVar(&f.diskSize, "disk-size-gb", 0, "The disk size to use when creating the image in GB. Value of '0' "+
 		"indicates the default size.")
 	flags.DurationVar(&f.timeout, "timeout", time.Hour, "Timeout value of the image build process. Must be formatted "+
@@ -100,6 +106,24 @@ func (f *FinishImageBuild) SetFlags(flags *flag.FlagSet) {
 }
 
 func (f *FinishImageBuild) validate() error {
+	const IMGSIZE = 10
+	if f.oemSize != "" {
+		oemSizeGB, err := partutil.ConvertSizeToGBRoundUp(f.oemSize)
+		if err != nil {
+			return fmt.Errorf("invalid format of oem-size: %s, error msg:(%v)", f.oemSize, err)
+		}
+		if f.diskSize-oemSizeGB < IMGSIZE {
+			return fmt.Errorf("'disk-size-gb' must be at least 'oem-size' + 10GB")
+		}
+		oemSizeBytes, err := partutil.ConvertSizeToBytes(f.oemSize)
+		if err != nil {
+			return fmt.Errorf("invalid format of oem-size: %s, error msg:(%v)", f.oemSize, err)
+		}
+
+		// shrink OEM size input (rounded down) by 1M to deal with cases
+		// where disk size is 1M smaller than needed.
+		f.oemSize = strconv.Itoa((oemSizeBytes>>20)-1) + "M"
+	}
 	switch {
 	case f.imageName == "" && f.imageSuffix == "":
 		return fmt.Errorf("one of 'image-name' or 'image-suffix' must be set")
@@ -135,6 +159,7 @@ func (f *FinishImageBuild) loadConfigs(files *fs.Files) (*config.Image, *config.
 	buildConfig.Zone = f.zone
 	buildConfig.DiskSize = f.diskSize
 	buildConfig.Timeout = f.timeout.String()
+	buildConfig.OEMSize = f.oemSize
 	outputImageConfig := config.NewImage(imageName, f.imageProject)
 	outputImageConfig.Labels = f.labels.m
 	outputImageConfig.Licenses = f.licenses.l

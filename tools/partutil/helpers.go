@@ -71,6 +71,21 @@ func ConvertSizeToBytes(size string) (int, error) {
 	return res, nil
 }
 
+// ConvertSizeToGBRoundUp converts input size to GB unit.
+// Rounded up, since extend disk can only take GB unit.
+// Used by Daisy workflow to resize the disk.
+func ConvertSizeToGBRoundUp(size string) (int, error) {
+	sizeByte, err := ConvertSizeToBytes(size)
+	if err != nil {
+		return -1, err
+	}
+	sizeGB := sizeByte >> 30
+	if (sizeGB << 30) != sizeByte {
+		sizeGB++
+	}
+	return sizeGB, nil
+}
+
 // PartNumIntToString converts input int partNumInt into string,
 // if disk ends with number, add 'p' to the front.
 // Example: /dev/loop5p1

@@ -66,6 +66,15 @@ func buildCloudConfig(script io.Reader, service io.Reader) (string, error) {
 		"systemctl daemon-reload",
 		"systemctl --no-block start customizer.service",
 	}
+
+	cloudConfig["bootcmd"] = []string{
+		"echo \"Resizing OEM partition file system...\"",
+		"umount /dev/sda8",
+		"e2fsck -fp /dev/sda8",
+		"resize2fs /dev/sda8",
+		"systemctl start usr-share-oem.mount",
+	}
+
 	cloudConfigYaml, err := yaml.Marshal(&cloudConfig)
 	if err != nil {
 		return "", err
@@ -143,18 +152,35 @@ func writeDaisyWorkflow(inputWorkflow string, outputImage *config.Image, buildSp
 		return "", err
 	}
 	acceleratorsJSON, err := json.Marshal([]map[string]interface{}{})
+	if err != nil {
+		return "", err
+	}
 	if buildSpec.GPUType != "" {
 		acceleratorType := fmt.Sprintf("projects/%s/zones/%s/acceleratorTypes/%s",
 			buildSpec.Project, buildSpec.Zone, buildSpec.GPUType)
 		acceleratorsJSON, err = json.Marshal([]map[string]interface{}{
 			{"acceleratorType": acceleratorType, "acceleratorCount": 1}})
-	}
-	if err != nil {
-		return "", err
+		if err != nil {
+			return "", err
+		}
 	}
 	licensesJSON, err := json.Marshal(outputImage.Licenses)
 	if err != nil {
 		return "", err
+	}
+
+	// template content for the step resize-disk. If disk-size is not provided
+	// a place holder is used, because ResizeDisk API requires a larger size than
+	// the original disk.
+	var resizeDiskJSON string
+	if buildSpec.DiskSize != 0 {
+		// actual disk size
+		resizeDiskJSON = fmt.Sprintf("\"ResizeDisks\": [{\"Name\": \"boot-disk\","+
+			"\"SizeGb\": \"%d\"}]", buildSpec.DiskSize)
+	} else {
+		// placeholder
+		resizeDiskJSON = "\"WaitForInstancesSignal\": [{\"Name\": \"preload-vm\",\"Interval\": \"2s\"," +
+			"\"SerialOutput\": {\"Port\": 3,\"SuccessMatch\": \"BuildStatus:\"}}]"
 	}
 	tmpl, err := template.New("workflow").Parse(string(tmplContents))
 	if err != nil {
@@ -168,10 +194,12 @@ func writeDaisyWorkflow(inputWorkflow string, outputImage *config.Image, buildSp
 		Labels       string
 		Accelerators string
 		Licenses     string
+		ResizeDisks  string
 	}{
 		string(labelsJSON),
 		string(acceleratorsJSON),
 		string(licensesJSON),
+		resizeDiskJSON,
 	}); err != nil {
 		w.Close()
 		os.Remove(w.Name())
@@ -218,6 +246,10 @@ func daisyArgs(ctx context.Context, gcs *gcsManager, files *fs.Files, input *con
 		return nil, err
 	}
 	var args []string
+
+	if buildSpec.OEMSize != "" {
+		args = append(args, "-var:oem_size", buildSpec.OEMSize)
+	}
 	if buildSpec.DiskSize != 0 {
 		args = append(args, "-var:disk_size_gb", strconv.Itoa(buildSpec.DiskSize))
 	}
