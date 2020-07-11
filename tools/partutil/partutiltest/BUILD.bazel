@@ -12,24 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
 go_library(
     name = "go_default_library",
-    srcs = [
-    ],
+    srcs = ["set_test_env.go"],
     importpath = "cos-customizer/tools/partutil/partutiltest",
     visibility = ["//visibility:public"],
-    deps = [
-
-    ],
-)
-
-go_test(
-    name = "go_default_test",
-    srcs = [
-    ],
-    embed = [":go_default_library"],
-    deps = [
-    ],
 )

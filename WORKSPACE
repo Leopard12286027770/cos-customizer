@@ -43,11 +43,20 @@ http_archive(
     urls = ["https://github.com/GoogleContainerTools/distroless/archive/fa0765cc86064801e42a3b35f50ff2242aca9998.tar.gz"],
 )
 
+http_archive(
+    name = "rules_pkg",
+    url = "https://github.com/bazelbuild/rules_pkg/releases/download/0.2.5/rules_pkg-0.2.5.tar.gz",
+    sha256 = "352c090cc3d3f9a6b4e676cf42a6047c16824959b438895a76c2989c6d7c246a",
+)
+load("@rules_pkg//:deps.bzl", "rules_pkg_dependencies")
+
 load("@io_bazel_rules_go//go:deps.bzl", "go_rules_dependencies", "go_register_toolchains")
 
 go_rules_dependencies()
 
 go_register_toolchains()
+
+rules_pkg_dependencies()
 
 load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies", "go_repository")
 

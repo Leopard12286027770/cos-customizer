@@ -16,9 +16,7 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
     name = "go_default_library",
-    srcs = [
-        "extend_oem_partition.go",
-    ],
+    srcs = ["extend_oem_partition.go"],
     importpath = "cos-customizer/tools",
     visibility = ["//visibility:public"],
     deps = [
@@ -28,11 +26,9 @@ go_library(
 
 go_test(
     name = "go_default_test",
-    srcs = [
-        "extend_oem_partition_test.go",
-    ],
+    srcs = ["extend_oem_partition_test.go"],
     embed = [":go_default_library"],
     deps = [
-        "//tools/partutil:go_default_library",
+        "//tools/partutil/partutiltest:go_default_library",
     ],
 )

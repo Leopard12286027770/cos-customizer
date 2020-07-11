@@ -1,0 +1,15 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+    name = "go_default_library",
+    srcs = ["extend_oem_bin.go"],
+    importpath = "cos-customizer/tools/main_for_build",
+    visibility = ["//visibility:private"],
+    deps = ["//tools:go_default_library"],
+)
+
+go_binary(
+    name = "main_for_build",
+    embed = [":go_default_library"],
+    visibility = ["//visibility:public"],
+)

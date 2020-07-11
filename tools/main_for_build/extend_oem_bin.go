@@ -8,7 +8,8 @@ import (
 )
 
 // main generates binary file to extend the OEM partition
-// cmd: GOOS=linux GOARCH=amd64 CGO_ENABLE=0 go build -o ./../../data/builtin_build_context/extend-oem.bin extend_oem_bin.go
+// To build manually: GOOS=linux GOARCH=amd64 CGO_ENABLE=0 go build -o ./../../data/builtin_build_context/extend-oem.bin extend_oem_bin.go
+// This is now automatically built by Bazel.
 func main() {
 	args := os.Args
 	if len(args) != 5 {

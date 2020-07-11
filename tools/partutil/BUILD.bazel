@@ -24,8 +24,6 @@ go_library(
     ],
     importpath = "cos-customizer/tools/partutil",
     visibility = ["//visibility:public"],
-    deps = [
-    ],
 )
 
 go_test(
@@ -36,8 +34,9 @@ go_test(
         "helpers_test.go",
         "move_partition_test.go",
     ],
+    data = glob(["testdata/**"]),
     embed = [":go_default_library"],
     deps = [
-        "//tools/partutil/partutiltest:go_default_library"
+        "//tools/partutil/partutiltest:go_default_library",
     ],
 )
