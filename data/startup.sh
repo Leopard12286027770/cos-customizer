@@ -47,7 +47,7 @@ exit_workdir() {
 setup() {
   echo "Setting up the environment for preloading..."
   if systemctl status update-engine; then
-    systemctl stop update-engine
+    systemctl stop update-engine || :
   else
     echo "'systemctl status update-engine' failed; this is non-fatal"
   fi
@@ -150,11 +150,11 @@ Restart=no
 EOF
 
   /usr/bin/systemctl daemon-reload
-  /usr/bin/systemctl stop systemd-journald.socket
-  /usr/bin/systemctl stop systemd-journald-dev-log.socket
-  /usr/bin/systemctl stop systemd-journald-audit.socket
-  /usr/bin/systemctl stop syslog.socket
-  /usr/bin/systemctl stop systemd-journald.service
+  /usr/bin/systemctl stop systemd-journald.socket || :
+  /usr/bin/systemctl stop systemd-journald-dev-log.socket || :
+  /usr/bin/systemctl stop systemd-journald-audit.socket || :
+  /usr/bin/systemctl stop syslog.socket || :
+  /usr/bin/systemctl stop systemd-journald.service || :
 }
 
 # this unit runs at shutdown time after everything but /tmp is unmounted
@@ -290,11 +290,11 @@ execute_state_file() {
 
 stop_services() {
   echo "Stopping services..."
-  systemctl stop crash-reporter
-  systemctl stop crash-sender
-  systemctl stop device_policy_manager
-  systemctl stop metrics-daemon
-  systemctl stop update-engine
+  systemctl stop crash-reporter || :
+  systemctl stop crash-sender || :
+  systemctl stop device_policy_manager || :
+  systemctl stop metrics-daemon || :
+  systemctl stop update-engine || :
   echo "Done stopping services."
 }
 

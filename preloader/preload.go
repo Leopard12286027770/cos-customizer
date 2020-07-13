@@ -169,11 +169,13 @@ func writeDaisyWorkflow(inputWorkflow string, outputImage *config.Image, buildSp
 		return "", err
 	}
 
-	// template content for the step resize-disk. If disk-size is not provided
-	// a place holder is used, because ResizeDisk API requires a larger size than
-	// the original disk.
+	// template content for the step resize-disk.
+	// If the oem-size is set, create the disk with the default size, and then resize the disk.
+	// Otherwise, a place holder is used. The disk is created with provided disk-size-gb or
+	// the default size. And the disk will not be resized.
+	// The place holder is needed because ResizeDisk API requires a larger size than the original disk.
 	var resizeDiskJSON string
-	if buildSpec.DiskSize != 0 {
+	if buildSpec.OEMSize != "" {
 		// actual disk size
 		resizeDiskJSON = fmt.Sprintf("\"ResizeDisks\": [{\"Name\": \"boot-disk\","+
 			"\"SizeGb\": \"%d\"}]", buildSpec.DiskSize)
@@ -248,8 +250,10 @@ func daisyArgs(ctx context.Context, gcs *gcsManager, files *fs.Files, input *con
 	var args []string
 	if buildSpec.OEMSize != "" {
 		args = append(args, "-var:oem_size", buildSpec.OEMSize)
-	}
-	if buildSpec.DiskSize != 0 {
+	} else if buildSpec.DiskSize != 0 {
+		// If the oem-size is set, create the disk with default size,
+		// and then resize the disk in the template step "resize-disk".
+		// Otherwise, create the disk with the provided disk-size-gb.
 		args = append(args, "-var:disk_size_gb", strconv.Itoa(buildSpec.DiskSize))
 	}
 	if output.Family != "" {

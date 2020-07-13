@@ -27,7 +27,7 @@
         {
           "Name": "boot-disk",
           "SourceImage": "${source_image}",
-          "SizeGb": "10"
+          "SizeGb": "${disk_size_gb}"
         }
       ]
     },
