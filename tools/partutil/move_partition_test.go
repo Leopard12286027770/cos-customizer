@@ -136,7 +136,7 @@ func TestMovePartitionPasses(t *testing.T) {
 			}
 			pos, err := ReadPartitionStart(input.disk, input.partNum)
 			if err != nil {
-				t.Fatalf("cannot read partition start of %s partition %d "+
+				t.Fatalf("cannot read partition start of %q partition %d "+
 					"error msg: (%v)", input.disk, input.partNum, err)
 			}
 			if pos != input.want {

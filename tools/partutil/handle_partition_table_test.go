@@ -79,7 +79,7 @@ func TestParsePartitionTablePasses(t *testing.T) {
 		t.Fatalf("error found in %s, error msg: (%v)", testData.testName, err)
 	}
 	if res != testData.want {
-		t.Fatalf("wrong result in %s, res: %s, expected: %s", testData.testName, res, testData.want)
+		t.Fatalf("wrong result in %q, res: %q, expected: %q", testData.testName, res, testData.want)
 
 	}
 
@@ -149,7 +149,7 @@ func TestReadPartitionSizePasses(t *testing.T) {
 
 	}
 	if res != input.want {
-		t.Fatalf("wrong result: %s partition %d at %d, exp: %d", input.disk, input.partNum, res, input.want)
+		t.Fatalf("wrong result: %q partition %d at %d, exp: %d", input.disk, input.partNum, res, input.want)
 	}
 }
 

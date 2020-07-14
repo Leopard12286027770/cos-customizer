@@ -67,14 +67,6 @@ func buildCloudConfig(script io.Reader, service io.Reader) (string, error) {
 		"systemctl --no-block start customizer.service",
 	}
 
-	cloudConfig["bootcmd"] = []string{
-		"echo \"Resizing OEM partition file system...\"",
-		"umount /dev/sda8",
-		"e2fsck -fp /dev/sda8",
-		"resize2fs /dev/sda8",
-		"systemctl start usr-share-oem.mount",
-	}
-
 	cloudConfigYaml, err := yaml.Marshal(&cloudConfig)
 	if err != nil {
 		return "", err
@@ -177,12 +169,10 @@ func writeDaisyWorkflow(inputWorkflow string, outputImage *config.Image, buildSp
 	var resizeDiskJSON string
 	if buildSpec.OEMSize != "" {
 		// actual disk size
-		resizeDiskJSON = fmt.Sprintf("\"ResizeDisks\": [{\"Name\": \"boot-disk\","+
-			"\"SizeGb\": \"%d\"}]", buildSpec.DiskSize)
+		resizeDiskJSON = fmt.Sprintf(`"ResizeDisks": [{"Name": "boot-disk","SizeGb": "%d"}]`, buildSpec.DiskSize)
 	} else {
 		// placeholder
-		resizeDiskJSON = "\"WaitForInstancesSignal\": [{\"Name\": \"preload-vm\",\"Interval\": \"2s\"," +
-			"\"SerialOutput\": {\"Port\": 3,\"SuccessMatch\": \"BuildStatus:\"}}]"
+		resizeDiskJSON = `"WaitForInstancesSignal": [{"Name": "preload-vm","Interval": "2s","SerialOutput": {"Port": 3,"SuccessMatch": "BuildStatus:"}}]`
 	}
 	tmpl, err := template.New("workflow").Parse(string(tmplContents))
 	if err != nil {

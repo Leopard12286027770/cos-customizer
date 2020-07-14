@@ -52,7 +52,7 @@ genrule(
 
 genrule(
     name="copy_extend_oem_bin",
-    srcs=["//tools/main_for_build:main_for_build"],
+    srcs=["//tools/cmd:main_for_build"],
     outs=["extend-oem.bin"],
     cmd="mv $< $@",
 )

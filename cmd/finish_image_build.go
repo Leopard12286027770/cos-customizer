@@ -106,18 +106,22 @@ func (f *FinishImageBuild) SetFlags(flags *flag.FlagSet) {
 }
 
 func (f *FinishImageBuild) validate() error {
-	const IMGSIZE = 10
+	// The default size of a COS image (imgSize) is 10GB. If the OEM partition is to be extended,
+	// the extended disk size must be larger than OEM size + image size.
+	// Since we allow user input like "500M", the OEM size is rounded up to GB to make sure
+	// there is enough space. Extra space will be taken by the stateful partition.
+	const imgSize = 10
 	if f.oemSize != "" {
 		oemSizeGB, err := partutil.ConvertSizeToGBRoundUp(f.oemSize)
 		if err != nil {
-			return fmt.Errorf("invalid format of oem-size: %s, error msg:(%v)", f.oemSize, err)
+			return fmt.Errorf("invalid format of oem-size: %q, error msg:(%v)", f.oemSize, err)
 		}
-		if f.diskSize-oemSizeGB < IMGSIZE {
+		if f.diskSize-oemSizeGB < imgSize {
 			return fmt.Errorf("'disk-size-gb' must be at least 'oem-size' + 10GB")
 		}
 		oemSizeBytes, err := partutil.ConvertSizeToBytes(f.oemSize)
 		if err != nil {
-			return fmt.Errorf("invalid format of oem-size: %s, error msg:(%v)", f.oemSize, err)
+			return fmt.Errorf("invalid format of oem-size: %q, error msg:(%v)", f.oemSize, err)
 		}
 
 		// shrink OEM size input (rounded down) by 1M to deal with cases

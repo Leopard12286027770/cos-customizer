@@ -23,11 +23,11 @@ import (
 // ConvertSizeToBytes converts a size string to int unit: bytes.
 // It takes a string of number with no unit (sectors), unit B, unit K, unit M, or unit G.
 func ConvertSizeToBytes(size string) (int, error) {
-	const B = 1
-	const K = 1024
-	const M = K * 1024
-	const G = M * 1024
-	const SEC = 512
+	const b = 1
+	const k = 1024
+	const m = k * 1024
+	const g = m * 1024
+	const sec = 512
 
 	var err error
 	res := -1
@@ -39,31 +39,31 @@ func ConvertSizeToBytes(size string) (int, error) {
 
 	if size[0] < '0' || size[0] > '9' {
 		return -1, fmt.Errorf("invalid oemSize, the first char should be digit, "+
-			"input size: %s", size)
+			"input size: %q", size)
 	}
 
 	if size[l-1] >= '0' && size[l-1] <= '9' {
 		res, err = strconv.Atoi(size)
 		if err != nil {
-			return -1, fmt.Errorf("cannot convert %s to int", size)
+			return -1, fmt.Errorf("cannot convert %q to int", size)
 		}
-		res *= SEC
+		res *= sec
 	} else {
 		res, err = strconv.Atoi(size[0 : l-1])
 		if err != nil {
-			return -1, fmt.Errorf("cannot convert %s in input: %s to int", string(size[0:l-1]), size)
+			return -1, fmt.Errorf("cannot convert %q in input: %q to int", string(size[0:l-1]), size)
 		}
 		switch size[l-1] {
 		case 'B':
-			res *= B
+			res *= b
 		case 'K':
-			res *= K
+			res *= k
 		case 'M':
-			res *= M
+			res *= m
 		case 'G':
-			res *= G
+			res *= g
 		default:
-			return -1, fmt.Errorf("wrong format for oemSize, input: %s, "+
+			return -1, fmt.Errorf("wrong format for oemSize, input: %q, "+
 				"expecting input like 10G, 200M, 600K, 5000B or 1024", size)
 		}
 	}

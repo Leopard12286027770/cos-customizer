@@ -149,18 +149,18 @@ stop_journald_service() {
 Restart=no
 EOF
 
-  /usr/bin/systemctl daemon-reload
-  /usr/bin/systemctl stop systemd-journald.socket || :
-  /usr/bin/systemctl stop systemd-journald-dev-log.socket || :
-  /usr/bin/systemctl stop systemd-journald-audit.socket || :
-  /usr/bin/systemctl stop syslog.socket || :
-  /usr/bin/systemctl stop systemd-journald.service || :
+  systemctl daemon-reload
+  systemctl stop systemd-journald.socket || :
+  systemctl stop systemd-journald-dev-log.socket || :
+  systemctl stop systemd-journald-audit.socket || :
+  systemctl stop syslog.socket || :
+  systemctl stop systemd-journald.service || :
 }
 
 # this unit runs at shutdown time after everything but /tmp is unmounted
 create_run_after_unmount_unit(){
   mkdir /tmp/last
-  mount -t tmpfs tmpfslast /tmp/last
+  mount -t tmpfs tmpfs /tmp/last
   # get OEMSize user input from meatadata
   local -r oem_size="$(/usr/share/google/get_metadata_value \
     attributes/OEMSize)"
@@ -169,14 +169,14 @@ create_run_after_unmount_unit(){
 Description=Run after everything unmounted
 DefaultDependencies=false
 Conflicts=shutdown.target
-Before=shutdown.target multi-user.target mnt-stateful_partition.mount var.mount mnt-disks.mount var-lib-docker.mount var-lib-toolbox.mount usr-share-oem.mount
+Before=mnt-stateful_partition.mount usr-share-oem.mount
 After=tmp-last.mount
 
 [Service]
 Type=oneshot
 RemainAfterExit=true
 ExecStart=/bin/true
-ExecStop=/tmp/last/extend-oem.bin /dev/sda 1 8 ${oem_size}
+ExecStop=/bin/bash -c '/tmp/last/extend-oem.bin /dev/sda 1 8 ${oem_size}|sed "s/^/BuildStatus: /"'
 TimeoutStopSec=600
 StandardOutput=tty
 StandardError=tty
@@ -191,32 +191,37 @@ extend_oem_partition(){
   local -r oem_size="$(/usr/share/google/get_metadata_value \
     attributes/OEMSize)"
 
-  if [ ${oem_size} != "" ]; then 
-    if [[ -e "${OEM_CHECK_FILE}" ]]; then
-      fdisk -l
-      df -h
-      echo "Successfully extended OEM partition."
-    else
-      touch "${OEM_CHECK_FILE}"
-      echo "Extending OEM partition..."
-      create_run_after_unmount_unit
-      mv builtin_ctx_dir/extend-oem.bin /tmp/last/extend-oem.bin
-      systemctl start last-run.service
-      stop_journald_service
-      echo "Rebooting..."
-      
-      # overwrite trap to avoid build failure triggered by reboot.
-      trap - EXIT
-      reboot
-      # keep it inside of this function until reboot kills the process
-      while :
-        do
-          sleep 1
-        done
-    fi
-  else
+  if [[ -z "${oem_size}" ]]; then 
     echo "No request to change OEM partition."
+    return
   fi
+  if [[ -e "${OEM_CHECK_FILE}" ]]; then
+    echo "Resizing OEM partition file system..."
+    umount /dev/sda8
+    e2fsck -fp /dev/sda8
+    resize2fs /dev/sda8
+    systemctl start usr-share-oem.mount
+    fdisk -l
+    df -h
+    echo "Successfully extended OEM partition."
+  else
+    touch "${OEM_CHECK_FILE}"
+    echo "Extending OEM partition..."
+    create_run_after_unmount_unit
+    mv builtin_ctx_dir/extend-oem.bin /tmp/last/extend-oem.bin
+    systemctl --no-block start last-run.service
+    stop_journald_service
+    echo "Rebooting..."
+    
+    # overwrite trap to avoid build failure triggered by reboot.
+    trap - EXIT
+    reboot
+    # keep it inside of this function until reboot kills the process
+    while :
+      do
+        sleep 1
+      done
+  fi  
 }
 
 fetch_state_file() {

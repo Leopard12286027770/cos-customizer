@@ -84,7 +84,7 @@ func TestConvertSizeToBytesPasses(t *testing.T) {
 				t.Fatalf("errorin test %s, error msg: (%v)", input.testName, err)
 			}
 			if res != input.want {
-				t.Fatalf("wrong result: %s to %d, expect: %d", input.input, res, input.want)
+				t.Fatalf("wrong result: %q to %d, expect: %d", input.input, res, input.want)
 			}
 		})
 	}
@@ -125,7 +125,7 @@ func TestPartNumIntToStringPasses(t *testing.T) {
 				t.Fatalf("error in test %s, error msg: (%v)", input.testName, err)
 			}
 			if res != input.want {
-				t.Fatalf("error in test %s, wrong result: %s, expected: %s", input.testName, res, input.want)
+				t.Fatalf("error in test %s, wrong result: %q, expected: %q", input.testName, res, input.want)
 			}
 		})
 	}
@@ -202,7 +202,7 @@ func TestConvertSizeToGBRoundUpPasses(t *testing.T) {
 				t.Fatalf("errorin test %s, error msg: (%v)", input.testName, err)
 			}
 			if res != input.want {
-				t.Fatalf("wrong result: %s to %d, expect: %d", input.input, res, input.want)
+				t.Fatalf("wrong result: %q to %d, expect: %d", input.input, res, input.want)
 			}
 		})
 	}
