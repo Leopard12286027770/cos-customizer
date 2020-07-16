@@ -48,6 +48,7 @@ type FinishImageBuild struct {
 	licenses       *listVar
 	inheritLabels  bool
 	oemSize        string
+	oemFSSize4K    int
 	diskSize       int
 	timeout        time.Duration
 }
@@ -106,22 +107,26 @@ func (f *FinishImageBuild) SetFlags(flags *flag.FlagSet) {
 }
 
 func (f *FinishImageBuild) validate() error {
-	// The default size of a COS image (imgSize) is 10GB. If the OEM partition is to be extended,
-	// the extended disk size must be larger than OEM size + image size.
-	// Since we allow user input like "500M", the OEM size is rounded up to GB to make sure
+	// The default size of a COS image (imgSize) is 10GB. And the OEM partition size should be doubled to
+	// store the hash tree of dm-verity. If the OEM partition is to be extended,
+	// the extended disk size must be larger than oem-size x 2 + image size.
+	// Since we allow user input like "500M", the oem-size is rounded up to GB to make sure
 	// there is enough space. Extra space will be taken by the stateful partition.
 	const imgSize = 10
 	if f.oemSize != "" {
-		oemSizeGB, err := partutil.ConvertSizeToGBRoundUp(f.oemSize)
+		oemSizeBytes, err := partutil.ConvertSizeToBytes(f.oemSize)
+		if err != nil {
+			return fmt.Errorf("invalid format of oem-size: %q, error msg:(%v)", f.oemSize, err)
+		}
+		f.oemFSSize4K = oemSizeBytes >> 12
+		// double the oem size.
+		oemSizeBytes <<= 1
+		oemSizeGB, err := partutil.ConvertSizeToGBRoundUp(strconv.Itoa(oemSizeBytes) + "B")
 		if err != nil {
 			return fmt.Errorf("invalid format of oem-size: %q, error msg:(%v)", f.oemSize, err)
 		}
 		if f.diskSize-oemSizeGB < imgSize {
-			return fmt.Errorf("'disk-size-gb' must be at least 'oem-size' + 10GB")
-		}
-		oemSizeBytes, err := partutil.ConvertSizeToBytes(f.oemSize)
-		if err != nil {
-			return fmt.Errorf("invalid format of oem-size: %q, error msg:(%v)", f.oemSize, err)
+			return fmt.Errorf("'disk-size-gb' must be at least 'oem-size' x 2 + 10GB")
 		}
 
 		// shrink OEM size input (rounded down) by 1M to deal with cases
@@ -164,6 +169,7 @@ func (f *FinishImageBuild) loadConfigs(files *fs.Files) (*config.Image, *config.
 	buildConfig.DiskSize = f.diskSize
 	buildConfig.Timeout = f.timeout.String()
 	buildConfig.OEMSize = f.oemSize
+	buildConfig.OEMFSSize4K = f.oemFSSize4K
 	outputImageConfig := config.NewImage(imageName, f.imageProject)
 	outputImageConfig.Labels = f.labels.m
 	outputImageConfig.Licenses = f.licenses.l

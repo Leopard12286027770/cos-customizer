@@ -15,5 +15,5 @@
 steps:
 - name: 'gcr.io/cloud-builders/gcloud'
   args: ["builds", "submit", "--config=testing/extend_oem_test/extend_oem_test.yaml",
-         "--substitutions=_OEM_SIZE=10G,_DISK_SIZE=20,_OEM_SIZE_TH=8192", "."]
+         "--substitutions=_OEM_SIZE=10G,_DISK_SIZE=30,_OEM_SIZE_TH=8192", "."]
 timeout: "7200s"

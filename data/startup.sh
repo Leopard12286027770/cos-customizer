@@ -159,8 +159,7 @@ EOF
 
 # this unit runs at shutdown time after everything but /tmp is unmounted
 create_run_after_unmount_unit(){
-  mkdir /tmp/last
-  mount -t tmpfs tmpfs /tmp/last
+  mount -o remount,exec /tmp
   # get OEMSize user input from meatadata
   local -r oem_size="$(/usr/share/google/get_metadata_value \
     attributes/OEMSize)"
@@ -170,13 +169,13 @@ Description=Run after everything unmounted
 DefaultDependencies=false
 Conflicts=shutdown.target
 Before=mnt-stateful_partition.mount usr-share-oem.mount
-After=tmp-last.mount
+After=tmp.mount
 
 [Service]
 Type=oneshot
 RemainAfterExit=true
 ExecStart=/bin/true
-ExecStop=/bin/bash -c '/tmp/last/extend-oem.bin /dev/sda 1 8 ${oem_size}|sed "s/^/BuildStatus: /"'
+ExecStop=/bin/bash -c '/tmp/extend-oem.bin /dev/sda 1 8 ${oem_size}|sed "s/^/BuildStatus: /"'
 TimeoutStopSec=600
 StandardOutput=tty
 StandardError=tty
@@ -190,6 +189,8 @@ extend_oem_partition(){
   # get user input from meatadata
   local -r oem_size="$(/usr/share/google/get_metadata_value \
     attributes/OEMSize)"
+  local -r oem_fs_size_4k="$(/usr/share/google/get_metadata_value \
+    attributes/OEMFSSize4K)"
 
   if [[ -z "${oem_size}" ]]; then 
     echo "No request to change OEM partition."
@@ -199,7 +200,7 @@ extend_oem_partition(){
     echo "Resizing OEM partition file system..."
     umount /dev/sda8
     e2fsck -fp /dev/sda8
-    resize2fs /dev/sda8
+    resize2fs /dev/sda8 "${oem_fs_size_4k}"
     systemctl start usr-share-oem.mount
     fdisk -l
     df -h
@@ -208,7 +209,7 @@ extend_oem_partition(){
     touch "${OEM_CHECK_FILE}"
     echo "Extending OEM partition..."
     create_run_after_unmount_unit
-    mv builtin_ctx_dir/extend-oem.bin /tmp/last/extend-oem.bin
+    mv builtin_ctx_dir/extend-oem.bin /tmp/extend-oem.bin
     systemctl --no-block start last-run.service
     stop_journald_service
     echo "Rebooting..."

@@ -240,6 +240,7 @@ func daisyArgs(ctx context.Context, gcs *gcsManager, files *fs.Files, input *con
 	var args []string
 	if buildSpec.OEMSize != "" {
 		args = append(args, "-var:oem_size", buildSpec.OEMSize)
+		args = append(args, "-var:oem_fs_size_4k", strconv.Itoa(buildSpec.OEMFSSize4K))
 	} else if buildSpec.DiskSize != 0 {
 		// If the oem-size is set, create the disk with default size,
 		// and then resize the disk in the template step "resize-disk".
