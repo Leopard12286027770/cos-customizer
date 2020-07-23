@@ -46,11 +46,7 @@ exit_workdir() {
 
 setup() {
   echo "Setting up the environment for preloading..."
-  if systemctl status update-engine; then
-    stop_service update-engine
-  else
-    echo "'systemctl status update-engine' failed; this is non-fatal"
-  fi
+  stop_service update-engine
   mount -t tmpfs tmpfs /root
   docker-credential-gcr configure-docker
   echo "Done setting up the environment for preloading"
