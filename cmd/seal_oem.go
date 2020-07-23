@@ -45,6 +45,9 @@ func (s *SealOEM) Usage() string {
 `
 }
 
+// SetFlags implements subcommands.Command.SetFlags.
+func (s *SealOEM) SetFlags(f *flag.FlagSet) {}
+
 // Execute implements subcommands.Command.Execute. It configures the current image build process to
 // customize the result image with a shell script.
 func (s *SealOEM) Execute(_ context.Context, f *flag.FlagSet, args ...interface{}) subcommands.ExitStatus {
