@@ -15,6 +15,7 @@
 # limitations under the License.
 
 echo "hello" > /mnt/stateful_partition/hello
+sudo mount -o remount,rw /usr/share/oem
 echo "hello" > /usr/share/oem/hello
 docker_code=0
 i=1

@@ -68,6 +68,7 @@ type Build struct {
 	DiskSize    int
 	OEMSize     string
 	OEMFSSize4K uint64
+	SealOEM     bool
 	GPUType     string
 	Timeout     string
 	GCSFiles    []string

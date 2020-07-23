@@ -179,6 +179,38 @@ func (f *FinishImageBuild) loadConfigs(files *fs.Files) (*config.Image, *config.
 	return sourceImageConfig, buildConfig, outputImageConfig, nil
 }
 
+func validateSealOEM(files *fs.Files) error {
+	buildConfig := &config.Build{}
+	if err := config.LoadFromFile(files.BuildConfig, buildConfig); err != nil {
+		return err
+	}
+	if !buildConfig.SealOEM {
+		return nil
+	}
+	if buildConfig.OEMSize != "" {
+		writeSealOEMStateFile(files, buildConfig.OEMFSSize4K)
+	}
+	// If need to seal OEM partition and the oem-size is not set,
+	// assume the OEM fs size is 16M, and the OEM partition size
+	// is doubled to 32M. Disk size must be at least 11GB.
+	if buildConfig.DiskSize < 11 {
+		return fmt.Errorf("need extra disk spcae to seal the OEM partition, " +
+			"disk-size-gb should be at least 11")
+	}
+	buildConfig.OEMSize = "32M"
+	buildConfig.OEMFSSize4K = 4096
+	writeSealOEMStateFile(files, buildConfig.OEMFSSize4K)
+	return nil
+}
+
+func writeSealOEMStateFile(files *fs.Files, OEMFSSize4K uint64) error {
+	script := fmt.Sprintf("seal_oem.sh %d", OEMFSSize4K)
+	if err := fs.AppendStateFile(files.StateFile, fs.Builtin, script, ""); err != nil {
+		return fmt.Errorf("cannot append state file, error msg:(%v)", err)
+	}
+	return nil
+}
+
 func update(dst, src map[string]string) {
 	for k, v := range src {
 		if _, ok := dst[k]; !ok {
@@ -208,6 +240,10 @@ func (f *FinishImageBuild) Execute(ctx context.Context, flags *flag.FlagSet, arg
 	}
 	sourceImage, buildConfig, outputImage, err := f.loadConfigs(files)
 	if err != nil {
+		log.Println(err)
+		return subcommands.ExitFailure
+	}
+	if err := validateSealOEM(files); err != nil {
 		log.Println(err)
 		return subcommands.ExitFailure
 	}
