@@ -107,34 +107,6 @@ func (f *FinishImageBuild) SetFlags(flags *flag.FlagSet) {
 }
 
 func (f *FinishImageBuild) validate() error {
-	// The default size of a COS image (imgSize) is 10GB. And the OEM partition size should be doubled to
-	// store the hash tree of dm-verity. If the OEM partition is to be extended,
-	// the following must be true: disk-size - oem-size x 2 >= imgSize.
-	// Since we allow user input like "500M", and the "resize-disk" API can only take GB as input,
-	// the oem-size is rounded up to GB to make sure there is enough space.
-	// Extra space will be taken by the stateful partition.
-	const imgSize uint64 = 10
-	if f.oemSize != "" {
-		oemSizeBytes, err := partutil.ConvertSizeToBytes(f.oemSize)
-		if err != nil {
-			return fmt.Errorf("invalid format of oem-size: %q, error msg:(%v)", f.oemSize, err)
-		}
-		f.oemFSSize4K = oemSizeBytes >> 12
-		// double the oem size.
-		oemSizeBytes <<= 1
-		oemSizeGB, err := partutil.ConvertSizeToGBRoundUp(strconv.FormatUint(oemSizeBytes, 10) + "B")
-		if err != nil {
-			return fmt.Errorf("invalid format of oem-size: %q, error msg:(%v)", f.oemSize, err)
-		}
-		if (uint64)(f.diskSize)-oemSizeGB < imgSize {
-			return fmt.Errorf("'disk-size-gb' must be at least 'oem-size' x 2 + image size (%dGB)", imgSize)
-		}
-
-		// shrink OEM size input (rounded down) by 1M to deal with cases
-		// where disk size is 1M smaller than needed.
-		// For example oem-size=1G disk-size-gb=12. In this case the disk size is not large enough.
-		f.oemSize = strconv.FormatUint((oemSizeBytes>>20)-1, 10) + "M"
-	}
 	switch {
 	case f.imageName == "" && f.imageSuffix == "":
 		return fmt.Errorf("one of 'image-name' or 'image-suffix' must be set")
@@ -166,12 +138,14 @@ func (f *FinishImageBuild) loadConfigs(files *fs.Files) (*config.Image, *config.
 	if err := config.LoadFromFile(files.BuildConfig, buildConfig); err != nil {
 		return nil, nil, nil, err
 	}
+	////////////////////////testing//////////////////////////////
+	buildConfig.SealOEM = true
+	////////////////////////testing//////////////////////////////
 	buildConfig.Project = f.project
 	buildConfig.Zone = f.zone
 	buildConfig.DiskSize = f.diskSize
 	buildConfig.Timeout = f.timeout.String()
 	buildConfig.OEMSize = f.oemSize
-	buildConfig.OEMFSSize4K = f.oemFSSize4K
 	outputImageConfig := config.NewImage(imageName, f.imageProject)
 	outputImageConfig.Labels = f.labels.m
 	outputImageConfig.Licenses = f.licenses.l
@@ -179,35 +153,69 @@ func (f *FinishImageBuild) loadConfigs(files *fs.Files) (*config.Image, *config.
 	return sourceImageConfig, buildConfig, outputImageConfig, nil
 }
 
-func validateSealOEM(files *fs.Files) error {
-	buildConfig := &config.Build{}
-	if err := config.LoadFromFile(files.BuildConfig, buildConfig); err != nil {
-		return err
-	}
+func validateOEM(buildConfig *config.Build) error {
+	// The default size of a COS image (imgSize) is assumed to be 10GB.
+	const imgSize uint64 = 10
+	var sizeErrorMsg string = ""
+	var oemSizeBytes uint64 = 0
+	var err error
 	if !buildConfig.SealOEM {
+		if buildConfig.OEMSize == "" {
+			return nil
+		}
+		// no need to seal the OEM partition.
+		// If the OEM partition is to be extended, the following must be true:
+		// disk-size - oem-size >= imgSize.
+		sizeErrorMsg = "'disk-size-gb' must be at least 'oem-size' + image size (%dGB)"
+		oemSizeBytes, err = partutil.ConvertSizeToBytes(buildConfig.OEMSize)
+		if err != nil {
+			return fmt.Errorf("invalid format of oem-size: %q, error msg:(%v)", buildConfig.OEMSize, err)
+		}
+	} else {
+		if buildConfig.OEMSize == "" {
+			// If need to seal OEM partition and the oem-size is not set,
+			// assume the OEM fs size is 16M as it is in a COS image,
+			// and the OEM partition size is doubled to 32M.
+			// Disk size must be at least 11GB.
+			if buildConfig.DiskSize < 11 {
+				return fmt.Errorf("need extra disk spcae to seal the OEM partition, " +
+					"disk-size-gb should be at least 11")
+			}
+			buildConfig.OEMSize = "32M"
+			buildConfig.OEMFSSize4K = 4096
+			return nil
+		}
+		// need extra space to seal the OEM partition.
+		// The OEM partition size should be doubled to store the
+		// hash tree of dm-verity. The following must be true:
+		// disk-size - oem-size x 2 >= imgSize.
+		sizeErrorMsg = "'disk-size-gb' must be at least 'oem-size' x 2 + image size (%dGB)"
+		oemSizeBytes, err = partutil.ConvertSizeToBytes(buildConfig.OEMSize)
+		if err != nil {
+			return fmt.Errorf("invalid format of oem-size: %q, error msg:(%v)", buildConfig.OEMSize, err)
+		}
+		buildConfig.OEMFSSize4K = oemSizeBytes >> 12
+		// double the oem size.
+		oemSizeBytes <<= 1
+	}
+	// Since we allow user input like "500M", and the "resize-disk" API can only take GB as input,
+	// the oem-size is rounded up to GB to make sure there is enough space.
+	// Extra space will be taken by the stateful partition.
+	oemSizeGB, err := partutil.ConvertSizeToGBRoundUp(strconv.FormatUint(oemSizeBytes, 10) + "B")
+	if err != nil {
+		return fmt.Errorf("invalid format of oem-size: %q, error msg:(%v)", buildConfig.OEMSize, err)
+	}
+	if (uint64)(buildConfig.DiskSize)-oemSizeGB < imgSize {
+		return fmt.Errorf(sizeErrorMsg, imgSize)
+	}
+	// shrink OEM size input (rounded down) by 1M to deal with cases
+	// where disk size is 1M smaller than needed.
+	// For example oem-size=1G disk-size-gb=12. In this case the disk size is not large enough.
+	if oemSizeBytes < (1 << 20) {
+		// input oem-size is too small
 		return nil
 	}
-	if buildConfig.OEMSize != "" {
-		writeSealOEMStateFile(files, buildConfig.OEMFSSize4K)
-	}
-	// If need to seal OEM partition and the oem-size is not set,
-	// assume the OEM fs size is 16M, and the OEM partition size
-	// is doubled to 32M. Disk size must be at least 11GB.
-	if buildConfig.DiskSize < 11 {
-		return fmt.Errorf("need extra disk spcae to seal the OEM partition, " +
-			"disk-size-gb should be at least 11")
-	}
-	buildConfig.OEMSize = "32M"
-	buildConfig.OEMFSSize4K = 4096
-	writeSealOEMStateFile(files, buildConfig.OEMFSSize4K)
-	return nil
-}
-
-func writeSealOEMStateFile(files *fs.Files, OEMFSSize4K uint64) error {
-	script := fmt.Sprintf("seal_oem.sh %d", OEMFSSize4K)
-	if err := fs.AppendStateFile(files.StateFile, fs.Builtin, script, ""); err != nil {
-		return fmt.Errorf("cannot append state file, error msg:(%v)", err)
-	}
+	buildConfig.OEMSize = strconv.FormatUint((oemSizeBytes>>20)-1, 10) + "M"
 	return nil
 }
 
@@ -243,7 +251,7 @@ func (f *FinishImageBuild) Execute(ctx context.Context, flags *flag.FlagSet, arg
 		log.Println(err)
 		return subcommands.ExitFailure
 	}
-	if err := validateSealOEM(files); err != nil {
+	if err := validateOEM(buildConfig); err != nil {
 		log.Println(err)
 		return subcommands.ExitFailure
 	}

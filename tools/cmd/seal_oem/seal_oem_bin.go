@@ -17,10 +17,21 @@ package main
 import (
 	"cos-customizer/tools"
 	"log"
+	"os"
+	"strconv"
 )
 
 func main() {
-	if err := tools.SealOEMPartition(2048); err != nil {
+	log.SetOutput(os.Stdout)
+	args := os.Args
+	if len(args) != 2 {
+		log.Fatalln("error: must have 1 argument: oemFSSize4K uint64")
+	}
+	oemFSSize4K, err := strconv.ParseUint(args[1], 10, 64)
+	if err != nil {
+		log.Fatalln("error: the argument oemFSSize4K must be an uint64")
+	}
+	if err := tools.SealOEMPartition(oemFSSize4K); err != nil {
 		log.Fatalln(err.Error())
 	}
 }

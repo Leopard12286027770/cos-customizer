@@ -16,4 +16,9 @@
 
 set -o errexit
 
-sudo ./seal_oem.bin $1
+# get user input from meatadata
+oem_fs_size_4k="$(/usr/share/google/get_metadata_value \
+attributes/OEMFSSize4K)"
+sudo mount -o remount,exec /var
+sudo chmod 777 ./seal_oem.bin
+sudo ./seal_oem.bin "${oem_fs_size_4k}"

@@ -42,7 +42,8 @@ steps:
 - name: 'gcr.io/compute-image-tools/daisy'
   args: ["-project=$PROJECT_ID", "-zone=us-west1-b", "-var:image_name",
          "preload-test-$BUILD_ID", "-var:image_project", "$PROJECT_ID",
-         "-var:test_cfg", "../${_TEST}/preload_test.cfg", "testing/util/run_test.wf.json"]
+         "-var:test_cfg", "../${_TEST}/preload_test.cfg", "testing/util/run_test.wf.json",
+         "-default-timeout","10m"]
 options:
   machineType: 'N1_HIGHCPU_32'
 timeout: "7200s"

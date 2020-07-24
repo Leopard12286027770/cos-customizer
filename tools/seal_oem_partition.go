@@ -15,7 +15,7 @@ import (
 // with "veritysetup" and modifies the kernel command line to
 // verify the OEM partition at boot time.
 func SealOEMPartition(oemFSSize4K uint64) error {
-	const veritysetupImgPath = "builtin_ctx_dir/veritysetup.img"
+	const veritysetupImgPath = "./veritysetup.img"
 	const devName = "oemroot"
 	if err := loadVeritysetupImage(veritysetupImgPath); err != nil {
 		return fmt.Errorf("cannot load veritysetup image at %q, error msg:(%v)", veritysetupImgPath, err)

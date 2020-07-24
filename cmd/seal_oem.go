@@ -19,6 +19,9 @@ import (
 	"cos-customizer/config"
 	"cos-customizer/fs"
 	"flag"
+	"fmt"
+	"log"
+	"os"
 
 	"github.com/google/subcommands"
 )
@@ -26,8 +29,7 @@ import (
 // SealOEM implements subcommands.Command for the "seal-oem" command.
 // It builds a hash tree of the OEM partition and modifies the kernel
 // command line to verify the OEM partition at boot time.
-type SealOEM struct {
-}
+type SealOEM struct{}
 
 // Name implements subcommands.Command.Name.
 func (s *SealOEM) Name() string {
@@ -56,10 +58,30 @@ func (s *SealOEM) Execute(_ context.Context, f *flag.FlagSet, args ...interface{
 		return subcommands.ExitUsageError
 	}
 	files := args[0].(*fs.Files)
+	configPath := files.BuildConfig
 	buildConfig := &config.Build{}
-	if err := config.LoadFromFile(files.BuildConfig, buildConfig); err != nil {
+	configFile, err := os.OpenFile(configPath, os.O_RDWR, 0666)
+	if err != nil {
+		return subcommands.ExitUsageError
+	}
+	defer configFile.Close()
+	if err := config.Load(configFile, buildConfig); err != nil {
+		return subcommands.ExitUsageError
+	}
+
+	buildConfig.SealOEM = true
+	if _, err := configFile.Seek(0, 0); err != nil {
+		log.Println(err)
 		return subcommands.ExitFailure
 	}
-	buildConfig.SealOEM = true
+	// if err := config.Save(configFile, buildConfig); err != nil {
+	// 	log.Println(err)
+	// 	return subcommands.ExitFailure
+	// }
+	// config.Save(configFile, buildConfig)
+	if err := fs.AppendStateFile(files.StateFile, fs.Builtin, "seal_oem.sh", ""); err != nil {
+		log.Println(fmt.Errorf("cannot append state file, error msg:(%v)", err))
+		return subcommands.ExitFailure
+	}
 	return subcommands.ExitSuccess
 }

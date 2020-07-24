@@ -52,14 +52,22 @@ genrule(
 
 genrule(
     name = "copy_extend_oem_bin",
-    srcs = ["//tools/cmd/extend_oem:main_for_build"],
-    outs = ["extend-oem.bin"],
+    srcs = ["//tools/cmd/extend_oem:extend_oem_bin"],
+    outs = ["extend_oem.bin"],
+    cmd = "cp $< $@",
+)
+
+
+genrule(
+    name = "copy_seal_oem_bin",
+    srcs = ["//tools/cmd/seal_oem:seal_oem_bin"],
+    outs = ["seal_oem.bin"],
     cmd = "cp $< $@",
 )
 
 pkg_tar(
-    name = "remap_extend_oem_bin",
-    srcs = [":copy_extend_oem_bin"],
+    name = "remap_oem_bin",
+    srcs = [":copy_seal_oem_bin",":copy_extend_oem_bin"],
     package_dir = "data/builtin_build_context/",
 )
 
@@ -81,7 +89,7 @@ container_image(
         ":workspace_dir",
         ":tmp_dir",
     ],
-    tars = [":remap_extend_oem_bin"],
+    tars = [":remap_oem_bin"],
 )
 
 go_image(
