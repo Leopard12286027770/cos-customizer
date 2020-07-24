@@ -74,6 +74,20 @@ type Build struct {
 	GCSFiles    []string
 }
 
+// Update Build Config file.
+func Update(configFile *os.File, buildConfig *Build) error {
+	if _, err := configFile.Seek(0, 0); err != nil {
+		return fmt.Errorf("cannot seek config file, error msg:(%v)", err)
+	}
+	if err := configFile.Truncate(0); err != nil {
+		return fmt.Errorf("cannot truncate config file, error msg:(%v)", err)
+	}
+	if err := Save(configFile, buildConfig); err != nil {
+		return fmt.Errorf("cannot save config file, error msg:(%v)", err)
+	}
+	return nil
+}
+
 // Save serializes the given struct as JSON and writes it out.
 func Save(w io.Writer, v interface{}) error {
 	data, err := json.Marshal(v)

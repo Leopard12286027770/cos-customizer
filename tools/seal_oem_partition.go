@@ -16,6 +16,7 @@ import (
 // verify the OEM partition at boot time.
 func SealOEMPartition(oemFSSize4K uint64) error {
 	const veritysetupImgPath = "./veritysetup.img"
+	const veritysetupImgName = "veritysetup"
 	const devName = "oemroot"
 	if err := loadVeritysetupImage(veritysetupImgPath); err != nil {
 		return fmt.Errorf("cannot load veritysetup image at %q, error msg:(%v)", veritysetupImgPath, err)
@@ -40,6 +41,10 @@ func SealOEMPartition(oemFSSize4K uint64) error {
 			"error msg:(%v)", oemFSSize4K, err)
 	}
 	log.Println("kernel command line modified.")
+	if err := removeVeritysetupImage(veritysetupImgName); err != nil {
+		return fmt.Errorf("cannot remove veritysetup image %q, error msg:(%v)", veritysetupImgName, err)
+	}
+	log.Println("docker image and container for veritysetup removed.")
 	return nil
 }
 
@@ -50,6 +55,26 @@ func loadVeritysetupImage(imgPath string) error {
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("error in loading docker image, "+
 			"input: imgPath=%q, error msg: (%v)", imgPath, err)
+	}
+	return nil
+}
+
+// removeVeritysetupImage removes the container and docker image of veritysetup
+func removeVeritysetupImage(imgName string) error {
+	var buf bytes.Buffer
+	buf.WriteString("y")
+	cmd := exec.Command("sudo", "docker", "container", "prune")
+	cmd.Stdin = &buf
+	cmd.Stdout = os.Stdout
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("error in removing docker container, "+
+			"cmd=%q, error msg: (%v)", "sudo docker container prune", err)
+	}
+	cmd = exec.Command("sudo", "docker", "rmi", imgName)
+	cmd.Stdout = os.Stdout
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("error in removing docker image, "+
+			"input: imgName=%q, error msg: (%v)", imgName, err)
 	}
 	return nil
 }
@@ -78,10 +103,15 @@ func mountEFIPartition() (string, error) {
 // veritysetup runs the docker container command veritysetup to build hash tree of OEM partition
 // and generate hash root value and salt value.
 func veritysetup(oemFSSize4K uint64) (string, string, error) {
+	// make sure the OEM partition is not mounted
+	cmd := exec.Command("sudo", "umount", "/dev/sda8")
+	cmd.Stdout = os.Stdout
+	cmd.Run()
+
 	dataBlocks := "--data-blocks=" + strconv.FormatUint(oemFSSize4K, 10)
 	// --hash-offset is in Bytes
 	hashOffset := "--hash-offset=" + strconv.FormatUint(oemFSSize4K<<12, 10)
-	cmd := exec.Command("sudo", "docker", "run", "--privileged", "-v", "/dev:/dev", "veritysetup", "veritysetup",
+	cmd = exec.Command("sudo", "docker", "run", "--privileged", "-v", "/dev:/dev", "veritysetup", "veritysetup",
 		"format", "/dev/sda8", "/dev/sda8", "--data-block-size=4096", "--hash-block-size=4096", dataBlocks,
 		hashOffset, "--no-superblock", "--format=0")
 	var verityBuf bytes.Buffer

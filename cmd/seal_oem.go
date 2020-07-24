@@ -68,17 +68,11 @@ func (s *SealOEM) Execute(_ context.Context, f *flag.FlagSet, args ...interface{
 	if err := config.Load(configFile, buildConfig); err != nil {
 		return subcommands.ExitUsageError
 	}
-
 	buildConfig.SealOEM = true
-	if _, err := configFile.Seek(0, 0); err != nil {
+	if err := config.Update(configFile, buildConfig); err != nil {
 		log.Println(err)
 		return subcommands.ExitFailure
 	}
-	// if err := config.Save(configFile, buildConfig); err != nil {
-	// 	log.Println(err)
-	// 	return subcommands.ExitFailure
-	// }
-	// config.Save(configFile, buildConfig)
 	if err := fs.AppendStateFile(files.StateFile, fs.Builtin, "seal_oem.sh", ""); err != nil {
 		log.Println(fmt.Errorf("cannot append state file, error msg:(%v)", err))
 		return subcommands.ExitFailure

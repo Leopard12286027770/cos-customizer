@@ -107,6 +107,15 @@ func (f *FinishImageBuild) SetFlags(flags *flag.FlagSet) {
 }
 
 func (f *FinishImageBuild) validate() error {
+	if f.oemSize != "" {
+		oemSizeBytes, err := partutil.ConvertSizeToBytes(f.oemSize)
+		if err != nil {
+			return fmt.Errorf("invalid format of oem-size: %q, error msg:(%v)", f.oemSize, err)
+		}
+		if oemSizeBytes < (16 << 20) {
+			return fmt.Errorf("oem-size must be at least 16M")
+		}
+	}
 	switch {
 	case f.imageName == "" && f.imageSuffix == "":
 		return fmt.Errorf("one of 'image-name' or 'image-suffix' must be set")
@@ -138,9 +147,6 @@ func (f *FinishImageBuild) loadConfigs(files *fs.Files) (*config.Image, *config.
 	if err := config.LoadFromFile(files.BuildConfig, buildConfig); err != nil {
 		return nil, nil, nil, err
 	}
-	////////////////////////testing//////////////////////////////
-	buildConfig.SealOEM = true
-	////////////////////////testing//////////////////////////////
 	buildConfig.Project = f.project
 	buildConfig.Zone = f.zone
 	buildConfig.DiskSize = f.diskSize
@@ -211,10 +217,6 @@ func validateOEM(buildConfig *config.Build) error {
 	// shrink OEM size input (rounded down) by 1M to deal with cases
 	// where disk size is 1M smaller than needed.
 	// For example oem-size=1G disk-size-gb=12. In this case the disk size is not large enough.
-	if oemSizeBytes < (1 << 20) {
-		// input oem-size is too small
-		return nil
-	}
 	buildConfig.OEMSize = strconv.FormatUint((oemSizeBytes>>20)-1, 10) + "M"
 	return nil
 }
