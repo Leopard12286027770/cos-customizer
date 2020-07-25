@@ -199,5 +199,9 @@ func (s *StartImageBuild) Execute(ctx context.Context, f *flag.FlagSet, args ...
 		log.Println(err)
 		return subcommands.ExitFailure
 	}
+	if err := fs.AppendStateFile(files.StateFile, fs.Builtin, "docker_build_veritysetup.sh", ""); err != nil {
+		log.Println(fmt.Errorf("cannot append state file, error msg:(%v)", err))
+		return subcommands.ExitFailure
+	}
 	return subcommands.ExitSuccess
 }

@@ -15,12 +15,11 @@ import (
 // with "veritysetup" and modifies the kernel command line to
 // verify the OEM partition at boot time.
 func SealOEMPartition(oemFSSize4K uint64) error {
-	const veritysetupImgPath = "./veritysetup.img"
-	const veritysetupImgName = "veritysetup"
+	// const veritysetupImgPath = "./veritysetup.img"
 	const devName = "oemroot"
-	if err := loadVeritysetupImage(veritysetupImgPath); err != nil {
-		return fmt.Errorf("cannot load veritysetup image at %q, error msg:(%v)", veritysetupImgPath, err)
-	}
+	// if err := loadVeritysetupImage(veritysetupImgPath); err != nil {
+	// 	return fmt.Errorf("cannot load veritysetup image at %q, error msg:(%v)", veritysetupImgPath, err)
+	// }
 	log.Println("docker image for veritysetup loaded.")
 	hash, salt, err := veritysetup(oemFSSize4K)
 	if err != nil {
@@ -41,40 +40,56 @@ func SealOEMPartition(oemFSSize4K uint64) error {
 			"error msg:(%v)", oemFSSize4K, err)
 	}
 	log.Println("kernel command line modified.")
-	if err := removeVeritysetupImage(veritysetupImgName); err != nil {
-		return fmt.Errorf("cannot remove veritysetup image %q, error msg:(%v)", veritysetupImgName, err)
+	if err := removeVeritysetupImage(); err != nil {
+		return fmt.Errorf("cannot remove veritysetup container or image, error msg:(%v)", err)
 	}
 	log.Println("docker image and container for veritysetup removed.")
 	return nil
 }
 
-// loadVeritysetupImage loads the docker image of veritysetup
-func loadVeritysetupImage(imgPath string) error {
-	cmd := exec.Command("sudo", "docker", "load", "-i", imgPath)
-	cmd.Stdout = os.Stdout
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("error in loading docker image, "+
-			"input: imgPath=%q, error msg: (%v)", imgPath, err)
-	}
-	return nil
-}
+// // loadVeritysetupImage loads the docker image of veritysetup
+// func loadVeritysetupImage(imgPath string) error {
+// 	cmd := exec.Command("sudo", "docker", "load", "-i", imgPath)
+// 	cmd.Stdout = os.Stdout
+// 	if err := cmd.Run(); err != nil {
+// 		return fmt.Errorf("error in loading docker image, "+
+// 			"input: imgPath=%q, error msg: (%v)", imgPath, err)
+// 	}
+// 	return nil
+// }
 
 // removeVeritysetupImage removes the container and docker image of veritysetup
-func removeVeritysetupImage(imgName string) error {
+func removeVeritysetupImage() error {
 	var buf bytes.Buffer
-	buf.WriteString("y")
-	cmd := exec.Command("sudo", "docker", "container", "prune")
-	cmd.Stdin = &buf
+	cmd := exec.Command("sudo", "docker", "ps", "-aqf", "name=veritysetup")
+	cmd.Stdout = &buf
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("error in getting container id, "+
+			"cmd=%q,  error msg: (%v)", "sudo docker ps -aqf name=veritysetup", err)
+	}
+	containerID := buf.String()
+	containerID = containerID[:len(containerID)-1]
+	buf.Reset()
+	cmd = exec.Command("sudo", "docker", "rm", containerID)
 	cmd.Stdout = os.Stdout
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("error in removing docker container, "+
-			"cmd=%q, error msg: (%v)", "sudo docker container prune", err)
+			"name=veritysetup, id=%q, error msg: (%v)", containerID, err)
 	}
-	cmd = exec.Command("sudo", "docker", "rmi", imgName)
+	cmd = exec.Command("sudo", "docker", "images", "veritysetup", "-q")
+	cmd.Stdout = &buf
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("error in getting image id, "+
+			"cmd=%q,  error msg: (%v)", "sudo docker images veritysetup -q", err)
+	}
+	imageID := buf.String()
+	imageID = imageID[:len(imageID)-1]
+	cmd = exec.Command("sudo", "docker", "rmi", imageID)
+	cmd.Stdin = &buf
 	cmd.Stdout = os.Stdout
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("error in removing docker image, "+
-			"input: imgName=%q, error msg: (%v)", imgName, err)
+			"id=%q, error msg: (%v)", imageID, err)
 	}
 	return nil
 }
@@ -111,7 +126,7 @@ func veritysetup(oemFSSize4K uint64) (string, string, error) {
 	dataBlocks := "--data-blocks=" + strconv.FormatUint(oemFSSize4K, 10)
 	// --hash-offset is in Bytes
 	hashOffset := "--hash-offset=" + strconv.FormatUint(oemFSSize4K<<12, 10)
-	cmd = exec.Command("sudo", "docker", "run", "--privileged", "-v", "/dev:/dev", "veritysetup", "veritysetup",
+	cmd = exec.Command("sudo", "docker", "run", "--name", "veritysetup", "--privileged", "-v", "/dev:/dev", "veritysetup", "veritysetup",
 		"format", "/dev/sda8", "/dev/sda8", "--data-block-size=4096", "--hash-block-size=4096", dataBlocks,
 		hashOffset, "--no-superblock", "--format=0")
 	var verityBuf bytes.Buffer
