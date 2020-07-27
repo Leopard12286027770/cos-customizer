@@ -20,7 +20,11 @@ func SealOEMPartition(oemFSSize4K uint64) error {
 	// if err := loadVeritysetupImage(veritysetupImgPath); err != nil {
 	// 	return fmt.Errorf("cannot load veritysetup image at %q, error msg:(%v)", veritysetupImgPath, err)
 	// }
-	log.Println("docker image for veritysetup loaded.")
+	// log.Println("docker image for veritysetup loaded.")
+	if err := unmountOEMPartition(); err != nil {
+		return fmt.Errorf("cannot umount OEM partition, error msg:(%v)", err)
+	}
+	log.Println("OEM parititon unmounted.")
 	hash, salt, err := veritysetup(oemFSSize4K)
 	if err != nil {
 		return fmt.Errorf("cannot run veritysetup, input:oemFSSize4K=%d, "+
@@ -115,18 +119,34 @@ func mountEFIPartition() (string, error) {
 	return dir + "/efi/boot", nil
 }
 
+// unmountOEMPartition checks whether the OEM partititon (/dev/sda8)
+// is mounted, if so, unmount it.
+func unmountOEMPartition() error {
+	var buf bytes.Buffer
+	cmd := exec.Command("df")
+	cmd.Stdout = &buf
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("error in running df, "+
+			"error msg: (%v)", err)
+	}
+	if !strings.Contains(buf.String(), "/dev/sda8") {
+		return nil
+	}
+	cmd = exec.Command("sudo", "umount", "/dev/sda8")
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("error in unmounting /dev/sda8, "+
+			"error msg: (%v)", err)
+	}
+	return nil
+}
+
 // veritysetup runs the docker container command veritysetup to build hash tree of OEM partition
 // and generate hash root value and salt value.
 func veritysetup(oemFSSize4K uint64) (string, string, error) {
-	// make sure the OEM partition is not mounted
-	cmd := exec.Command("sudo", "umount", "/dev/sda8")
-	cmd.Stdout = os.Stdout
-	cmd.Run()
-
 	dataBlocks := "--data-blocks=" + strconv.FormatUint(oemFSSize4K, 10)
 	// --hash-offset is in Bytes
 	hashOffset := "--hash-offset=" + strconv.FormatUint(oemFSSize4K<<12, 10)
-	cmd = exec.Command("sudo", "docker", "run", "--name", "veritysetup", "--privileged", "-v", "/dev:/dev", "veritysetup", "veritysetup",
+	cmd := exec.Command("sudo", "docker", "run", "--name", "veritysetup", "--privileged", "-v", "/dev:/dev", "veritysetup", "veritysetup",
 		"format", "/dev/sda8", "/dev/sda8", "--data-block-size=4096", "--hash-block-size=4096", dataBlocks,
 		hashOffset, "--no-superblock", "--format=0")
 	var verityBuf bytes.Buffer
