@@ -211,7 +211,7 @@ func validateOEM(buildConfig *config.Build) error {
 	if err != nil {
 		return fmt.Errorf("invalid format of oem-size: %q, error msg:(%v)", buildConfig.OEMSize, err)
 	}
-	if (uint64)(buildConfig.DiskSize)-oemSizeGB < imgSize {
+	if (uint64)(buildConfig.DiskSize) < imgSize+oemSizeGB {
 		return fmt.Errorf(sizeErrorMsg, imgSize)
 	}
 	// shrink OEM size input (rounded down) by 1M to deal with cases

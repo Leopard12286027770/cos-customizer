@@ -83,7 +83,6 @@ container_image(
         packages["libdevmapper1.02.1"],
         packages["libgcrypt20"],
         packages["libargon2-0"],
-        packages["libposix-2008-perl"],
         packages["libjson-c3"],
         packages["libudev1"],
         packages["libpthread-stubs0-dev"],
@@ -94,13 +93,13 @@ container_image(
 
 genrule(
     name = "veritysetup_img",
-    srcs = [":veritysetup"],
+    srcs = [":veritysetup.tar"],
     outs = ["veritysetup.img"],
     cmd = "cp $< $@",
 )
 
 pkg_tar(
-    name = "remap_oem_bin",
+    name = "remap_builtin_build_ctx",
     srcs = [":copy_seal_oem_bin",":copy_extend_oem_bin",":veritysetup_img"],
     package_dir = "data/builtin_build_context/",
 )
@@ -123,7 +122,7 @@ container_image(
         ":workspace_dir",
         ":tmp_dir",
     ],
-    tars = [":remap_oem_bin"],
+    tars = [":remap_builtin_build_ctx"],
 )
 
 go_image(

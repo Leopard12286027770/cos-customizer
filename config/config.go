@@ -74,7 +74,7 @@ type Build struct {
 	GCSFiles    []string
 }
 
-// Update Build Config file.
+// Update clears the config file and then saves the new config.Build.
 func Update(configFile *os.File, buildConfig *Build) error {
 	if _, err := configFile.Seek(0, 0); err != nil {
 		return fmt.Errorf("cannot seek config file, error msg:(%v)", err)

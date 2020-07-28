@@ -21,6 +21,8 @@ import (
 	"strconv"
 )
 
+// main generates binary file to seal the OEM partition.
+// Built by Bazel. The binary will be in data/builtin_build_context/.
 func main() {
 	log.SetOutput(os.Stdout)
 	args := os.Args

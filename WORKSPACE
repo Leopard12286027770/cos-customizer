@@ -244,7 +244,6 @@ dpkg_list(
         "libdevmapper1.02.1",
         "libgcrypt20",
         "libargon2-0",
-        "libposix-2008-perl",
         "libjson-c3",
         "libudev1",
         "libpthread-stubs0-dev",

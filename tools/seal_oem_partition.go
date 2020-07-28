@@ -2,6 +2,7 @@ package tools
 
 import (
 	"bytes"
+	"cos-customizer/tools/partutil"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -31,16 +32,16 @@ func SealOEMPartition(oemFSSize4K uint64) error {
 		return fmt.Errorf("cannot run veritysetup, input:oemFSSize4K=%d, "+
 			"error msg:(%v)", oemFSSize4K, err)
 	}
-	grupPath, err := mountEFIPartition()
+	grubPath, err := mountEFIPartition()
 	log.Println("EFI parititon mounted.")
 	if err != nil {
 		return fmt.Errorf("cannot mount EFI partition (/dev/sda12), error msg:(%v)", err)
 	}
-	partUUID, err := getPartUUID("/dev/sda8")
+	partUUID, err := partutil.GetPartUUID("/dev/sda8")
 	if err != nil {
 		return fmt.Errorf("cannot read partUUID of /dev/sda8")
 	}
-	if err := appendDMEntryToGRUB(grupPath, devName, partUUID, hash, salt, oemFSSize4K); err != nil {
+	if err := appendDMEntryToGRUB(grubPath, devName, partUUID, hash, salt, oemFSSize4K); err != nil {
 		return fmt.Errorf("error in appending entry to grub.cfg, input:oemFSSize4K=%d, "+
 			"error msg:(%v)", oemFSSize4K, err)
 	}
@@ -55,14 +56,23 @@ func SealOEMPartition(oemFSSize4K uint64) error {
 // loadVeritysetupImage loads the docker image of veritysetup.
 // return the image ID.
 func loadVeritysetupImage(imgPath string) (string, error) {
-	var idBuf bytes.Buffer
-	cmd := exec.Command("sudo", "docker", "import", imgPath)
-	cmd.Stdout = &idBuf
+	cmd := exec.Command("sudo", "docker", "load", "-i", imgPath)
 	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("error in importing docker image, "+
+		return "", fmt.Errorf("error in loading docker image, "+
 			"input: imgPath=%q, error msg: (%v)", imgPath, err)
 	}
-	imageID := strings.Split(idBuf.String(), ":")[1]
+	var idBuf bytes.Buffer
+	cmd = exec.Command("sudo", "docker", "images", "veritysetup:veritysetup", "-q")
+	cmd.Stdout = &idBuf
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("error in reading image ID, "+
+			"cmd:%q, error msg: (%v)", "sudo docker images veritysetup:veritysetup -q", err)
+	}
+	if idBuf.Len() == 0 {
+		return "", fmt.Errorf("image ID not found, "+
+			"input: imgPath=%q", imgPath)
+	}
+	imageID := idBuf.String()
 	return imageID[:len(imageID)-1], nil
 }
 
@@ -152,41 +162,6 @@ func veritysetup(imageID string, oemFSSize4K uint64) (string, string, error) {
 	hash := strings.TrimSpace(strings.Split(lines[len(lines)-2], ":")[1])
 	salt := strings.TrimSpace(strings.Split(lines[len(lines)-3], ":")[1])
 	return hash, salt, nil
-}
-
-// getPartUUID finds the PartUUID of a partition using blkid
-func getPartUUID(partName string) (string, error) {
-	var idBuf bytes.Buffer
-	cmd := exec.Command("sudo", "blkid")
-	cmd.Stdout = &idBuf
-	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("error in running blkid, "+
-			"error msg: (%v)", err)
-	}
-	// blkid has output like:
-	// /dev/sda1: LABEL="STATE" UUID="120991ff-4f12-43bf-b962-17325185121d" TYPE="ext4"
-	// /dev/sda3: LABEL="ROOT-A" SEC_TYPE="ext2" TYPE="ext4" PARTLABEL="ROOT-A" PARTUUID="00ce255b-db42-1e47-a62b-735c7a9a7397"
-	// /dev/sda8: LABEL="OEM" UUID="1401457b-449d-4755-9a1e-57054b287489" TYPE="ext4" PARTLABEL="OEM" PARTUUID="9db2ae75-98dc-5b4f-a38b-b3cb0b80b17f"
-	// /dev/sda12: SEC_TYPE="msdos" LABEL="EFI-SYSTEM" UUID="F6E7-003C" TYPE="vfat" PARTLABEL="EFI-SYSTEM" PARTUUID="aaea6e5e-bc5f-2542-b19a-66c2daa4d5a8"
-	// /dev/dm-0: LABEL="ROOT-A" SEC_TYPE="ext2" TYPE="ext4"
-	// /dev/sda2: PARTLABEL="KERN-A" PARTUUID="de4778dd-c187-8343-b86c-e122f9d234c0"
-	// /dev/sda4: PARTLABEL="KERN-B" PARTUUID="7b8374db-78b2-2748-bab9-a52d0867455b"
-	// /dev/sda5: PARTLABEL="ROOT-B" PARTUUID="8ac60384-1187-9e49-91ce-3abd8da295a7"
-	// /dev/sda11: PARTLABEL="RWFW" PARTUUID="682ef1a5-f7f6-7d42-a407-5d8ad0430fc1"
-	lines := strings.Split(idBuf.String(), "\n")
-	for _, line := range lines {
-		if !strings.HasPrefix(line, partName) {
-			continue
-		}
-		for _, content := range strings.Split(line, " ") {
-			if !strings.HasPrefix(content, "PARTUUID") {
-				continue
-			}
-			return strings.Trim(strings.Split(content, "=")[1], "\""), nil
-		}
-	}
-	return "", fmt.Errorf("partition UUID not found, input: partName=%q ,"+
-		"output of \"blkid\": %s", partName, idBuf.String())
 }
 
 // appendDMEntryToGRUB appends an dm-verity table entry to kernel command line in grub.cfg
