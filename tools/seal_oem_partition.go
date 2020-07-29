@@ -154,13 +154,19 @@ func veritysetup(imageID string, oemFSSize4K uint64) (string, string, error) {
 	// Hash algorithm:         sha256
 	// Salt:                   9cd7ba29a1771b2097a7d72be8c13b29766d7617c3b924eb0cf23ff5071fee47
 	// Root hash:              d6b862d01e01e6417a1b5e7eb0eed2a2189594b74325dd0749cd83bbf78f5dc8
-	lines := strings.Split(verityBuf.String(), "\n")
-	if !strings.HasPrefix(lines[len(lines)-2], "Root hash:") || !strings.HasPrefix(lines[len(lines)-3], "Salt:") {
-		return "", "", fmt.Errorf("error in veritsetup output format, the last two lines are not \"Salt:\" and \"Root hash:\", "+
+	hash := ""
+	salt := ""
+	for _, line := range strings.Split(verityBuf.String(), "\n") {
+		if strings.HasPrefix(line, "Root hash:") {
+			hash = strings.TrimSpace(strings.Split(line, ":")[1])
+		} else if strings.HasPrefix(line, "Salt:") {
+			salt = strings.TrimSpace(strings.Split(line, ":")[1])
+		}
+	}
+	if hash == "" || salt == "" {
+		return "", "", fmt.Errorf("error in veritsetup output format, cannot find \"Salt:\" or \"Root hash:\", "+
 			"input: oemFSSize4K=%d, veritysetup output: %s", oemFSSize4K, verityBuf.String())
 	}
-	hash := strings.TrimSpace(strings.Split(lines[len(lines)-2], ":")[1])
-	salt := strings.TrimSpace(strings.Split(lines[len(lines)-3], ":")[1])
 	return hash, salt, nil
 }
 
