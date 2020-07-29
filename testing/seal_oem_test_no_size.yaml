@@ -39,7 +39,7 @@ steps:
          "-image-project=$PROJECT_ID",
          "-disk-size-gb=11"]
 - name: 'gcr.io/compute-image-tools/daisy'
-  args: ["-default_timeout=15m","-project=$PROJECT_ID", "-zone=us-west1-b", "-var:image_name",
+  args: ["-default_timeout=15m", "-project=$PROJECT_ID", "-zone=us-west1-b", "-var:image_name",
          "preload-test-$BUILD_ID", "-var:image_project", "$PROJECT_ID",
          "-var:test_cfg", "../${_TEST}/preload_test.cfg", "testing/util/run_test.wf.json"]
 options:

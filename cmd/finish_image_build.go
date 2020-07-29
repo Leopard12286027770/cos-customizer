@@ -107,13 +107,14 @@ func (f *FinishImageBuild) SetFlags(flags *flag.FlagSet) {
 }
 
 func (f *FinishImageBuild) validate() error {
+	const defaultOEMSizeMB = 16
 	if f.oemSize != "" {
 		oemSizeBytes, err := partutil.ConvertSizeToBytes(f.oemSize)
 		if err != nil {
 			return fmt.Errorf("invalid format of oem-size: %q, error msg:(%v)", f.oemSize, err)
 		}
-		if oemSizeBytes < (16 << 20) {
-			return fmt.Errorf("oem-size must be at least 16M")
+		if oemSizeBytes < (defaultOEMSizeMB << 20) {
+			return fmt.Errorf("oem-size must be at least %dM", defaultOEMSizeMB)
 		}
 	}
 	switch {

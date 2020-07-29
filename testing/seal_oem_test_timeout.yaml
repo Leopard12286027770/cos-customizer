@@ -26,14 +26,14 @@ steps:
          "-image-project=${_INPUT_PROJECT}",
          "-gcs-bucket=${PROJECT_ID}_cloudbuild",
          "-gcs-workdir=customizer-$BUILD_ID"]
-- name: 'bazel:cos_customizer'
-  args: ["run-script",
-         "-script=preload.sh"]
-- name: 'bazel:cos_customizer'
-  args: ["seal-oem"]   
-- name: 'bazel:cos_customizer'
-  args: ["run-script",
-         "-script=modify_oem.sh"]       
+# - name: 'bazel:cos_customizer'
+#   args: ["run-script",
+#          "-script=preload.sh"]
+# - name: 'bazel:cos_customizer'
+#   args: ["seal-oem"]   
+# - name: 'bazel:cos_customizer'
+#   args: ["run-script",
+#          "-script=modify_oem.sh"]       
 - name: 'bazel:cos_customizer'
   args: ["finish-image-build",
          "-zone=us-west1-b",
@@ -41,14 +41,14 @@ steps:
          "-image-name=preload-test-$BUILD_ID",
          "-image-project=$PROJECT_ID",
          "-disk-size-gb=11"]
-- name: 'gcr.io/compute-image-tools/daisy'
+- name: 'gcr.io/cloud-builders/docker'
+  args: [ 'build', '-t', 'gcr.io/$PROJECT_ID/seal-oem-test-timeout-image', 'testing/${_TEST}' ]
+- name: 'gcr.io/cloud-builders/docker' 
   entrypoint: '/bin/bash'
   args:
   - '-c'
   - |
-    daisy -default_timeout=5m -project=$PROJECT_ID -zone=us-west1-b -var:image_name, \
-         preload-test-$BUILD_ID -var:image_project $PROJECT_ID, \
-         -var:test_cfg ../${_TEST}/preload_test.cfg testing/util/run_test.wf.json \
+    docker run --rm gcr.io/$PROJECT_ID/seal-oem-test-timeout-image /daisy -default_timeout=5m -project=$PROJECT_ID -zone=us-west1-b -var:image_name preload-test-$BUILD_ID -var:image_project $PROJECT_ID -var:test_cfg ../${_TEST}/preload_test.cfg testing/util/run_test.wf.json
 options:
   machineType: 'N1_HIGHCPU_32'
 timeout: "7200s"
