@@ -47,9 +47,9 @@ func SealOEMPartition(oemFSSize4K uint64) error {
 	}
 	log.Println("kernel command line modified.")
 	if err := removeVeritysetupImage(imageID); err != nil {
-		return fmt.Errorf("cannot remove veritysetup container or image, error msg:(%v)", err)
+		return fmt.Errorf("cannot remove veritysetup image, error msg:(%v)", err)
 	}
-	log.Println("docker image and container for veritysetup removed.")
+	log.Println("docker image for veritysetup removed.")
 	return nil
 }
 
