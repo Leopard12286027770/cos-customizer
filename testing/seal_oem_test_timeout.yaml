@@ -41,14 +41,14 @@ steps:
          "-image-name=preload-test-$BUILD_ID",
          "-image-project=$PROJECT_ID",
          "-disk-size-gb=11"]
-- name: 'gcr.io/cloud-builders/docker'
-  args: [ 'build', '-t', 'gcr.io/$PROJECT_ID/seal-oem-test-timeout-image', 'testing/${_TEST}' ]
-- name: 'gcr.io/cloud-builders/docker' 
-  entrypoint: '/bin/bash'
-  args:
-  - '-c'
-  - |
-    docker run --rm gcr.io/$PROJECT_ID/seal-oem-test-timeout-image /daisy -default_timeout=5m -project=$PROJECT_ID -zone=us-west1-b -var:image_name preload-test-$BUILD_ID -var:image_project $PROJECT_ID -var:test_cfg /preload_test.cfg /run_test.wf.json
+- name: 'gcr.io/cloud-builders/docker'    
+  args: [ 'build', '-t', 'seal-oem-test-timeout-image', 'testing/${_TEST}' ]    
+- name: 'seal-oem-test-timeout-image'     
+  entrypoint: '/bin/bash'    
+  args:    
+  - '-c'    
+  - |    
+    /daisy -default_timeout=5m -project=$PROJECT_ID -zone=us-west1-b -var:image_name preload-test-$BUILD_ID -var:image_project $PROJECT_ID -var:test_cfg /preload_test.cfg /run_test.wf.json
 options:
   machineType: 'N1_HIGHCPU_32'
 timeout: "7200s"
