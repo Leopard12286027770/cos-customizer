@@ -1,3 +1,17 @@
+// Copyright 2020 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package tools
 
 import (
@@ -32,7 +46,7 @@ func SealOEMPartition(oemFSSize4K uint64) error {
 		return fmt.Errorf("cannot run veritysetup, input:oemFSSize4K=%d, "+
 			"error msg:(%v)", oemFSSize4K, err)
 	}
-	grubPath, err := mountEFIPartition()
+	grubPath, err := partutil.MountEFIPartition()
 	log.Println("EFI parititon mounted.")
 	if err != nil {
 		return fmt.Errorf("cannot mount EFI partition (/dev/sda12), error msg:(%v)", err)
@@ -85,27 +99,6 @@ func removeVeritysetupImage(imageID string) error {
 			"id=%q, error msg: (%v)", imageID, err)
 	}
 	return nil
-}
-
-// mountEFIPartition mounts the EFI partition (/dev/sda12)
-// and returns the path where grub.cfg is at.
-func mountEFIPartition() (string, error) {
-	var tmpDirBuf bytes.Buffer
-	cmd := exec.Command("mktemp", "-d")
-	cmd.Stdout = &tmpDirBuf
-	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("error in creating tmp directory, "+
-			"error msg: (%v)", err)
-	}
-	dir := tmpDirBuf.String()
-	dir = dir[:len(dir)-1]
-	cmd = exec.Command("sudo", "mount", "/dev/sda12", dir)
-	cmd.Stdout = os.Stdout
-	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("error in mounting /dev/sda12 at %q, "+
-			"error msg: (%v)", dir, err)
-	}
-	return dir + "/efi/boot", nil
 }
 
 // unmountOEMPartition checks whether the OEM partititon (/dev/sda8)
@@ -174,7 +167,6 @@ func veritysetup(imageID string, oemFSSize4K uint64) (string, string, error) {
 // A target line in grub.cfg looks like
 // ...... root=/dev/dm-0 dm="1 vroot none ro 1,0 4077568 verity payload=PARTUUID=8AC60384-1187-9E49-91CE-3ABD8DA295A7 hashtree=PARTUUID=8AC60384-1187-9E49-91CE-3ABD8DA295A7 hashstart=4077568 alg=sha256 root_hexdigest=xxxxxxxx salt=xxxxxxxx"
 func appendDMEntryToGRUB(grubPath, name, partUUID, hash, salt string, oemFSSize4K uint64) error {
-	grubPath = grubPath + "/grub.cfg"
 	// from 4K blocks to 512B sectors
 	oemFSSizeSector := oemFSSize4K << 3
 	entryString := fmt.Sprintf("%s none ro 1, 0 %d verity payload=PARTUUID=%s hashtree=PARTUUID=%s hashstart=%d alg=sha256 "+
@@ -206,5 +198,4 @@ func appendDMEntryToGRUB(grubPath, name, partUUID, hash, salt string, oemFSSize4
 			"error msg:(%v)", grubPath, grubPath, name, partUUID, oemFSSize4K, hash, salt, err)
 	}
 	return nil
-
 }
