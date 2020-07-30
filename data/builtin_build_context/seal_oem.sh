@@ -16,7 +16,7 @@
 
 set -o errexit
 
-# get user input from meatadata
+# get user input from metadata
 oem_fs_size_4k="$(/usr/share/google/get_metadata_value \
 attributes/OEMFSSize4K)"
 sudo mount -o remount,exec /var

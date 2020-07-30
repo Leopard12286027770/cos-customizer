@@ -182,7 +182,7 @@ EOF
 extend_oem_partition(){
   echo "Checking whether need to extend OEM partition..."
 
-  # get user input from meatadata
+  # get user input from metadata
   local -r oem_size="$(/usr/share/google/get_metadata_value \
     attributes/OEMSize)"
   local -r oem_fs_size_4k="$(/usr/share/google/get_metadata_value \

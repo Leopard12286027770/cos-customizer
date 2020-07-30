@@ -185,7 +185,7 @@ func validateOEM(buildConfig *config.Build) error {
 			// and the OEM partition size is doubled to 32M.
 			// Disk size must be at least 11GB.
 			if buildConfig.DiskSize < 11 {
-				return fmt.Errorf("need extra disk spcae to seal the OEM partition, " +
+				return fmt.Errorf("need extra disk space to seal the OEM partition, " +
 					"disk-size-gb should be at least 11")
 			}
 			buildConfig.OEMSize = "32M"

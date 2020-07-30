@@ -17,4 +17,5 @@ run apt-get update && apt-get install -y ca-certificates
 copy --from=daisy /daisy /daisy
 copy --from=daisy /workflows /workflows
 copy ./run_test.wf.json /
+copy ./vm.wf.json /
 copy  ./preload_test.cfg /
