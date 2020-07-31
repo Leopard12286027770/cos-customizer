@@ -48,6 +48,7 @@ func SealOEMPartition(oemFSSize4K uint64) error {
 	}
 	grubPath, err := partutil.MountEFIPartition()
 	log.Println("EFI parititon mounted.")
+	defer partutil.UnmountEFIPartition()
 	if err != nil {
 		return fmt.Errorf("cannot mount EFI partition (/dev/sda12), error msg:(%v)", err)
 	}

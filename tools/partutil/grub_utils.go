@@ -55,8 +55,8 @@ func UnmountEFIPartition() error {
 	return nil
 }
 
-// GRUBContainsCMD seaches for the command string inside of the GRUB file
-func GRUBContainsCMD(grubPath, cmd string) (bool, error) {
+// GRUBContains seaches for the command string inside of the GRUB file
+func GRUBContains(grubPath, cmd string) (bool, error) {
 	grubContent, err := ioutil.ReadFile(grubPath)
 	if err != nil {
 		return false, fmt.Errorf("cannot read grub.cfg at %q, "+

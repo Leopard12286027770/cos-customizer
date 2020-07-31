@@ -13,3 +13,32 @@
 // limitations under the License.
 
 package tools
+
+import (
+	"cos-customizer/tools/partutil"
+	"fmt"
+)
+
+// DisableAutoUpdate disables the auto-update servicee
+func DisableAutoUpdate() error {
+	const cmd = "systemd.mask=update-engine.service"
+	grubPath, err := partutil.MountEFIPartition()
+	if err != nil {
+		return fmt.Errorf("cannot mount EFI partition,"+
+			"error msg:(%v)", err)
+	}
+	defer partutil.UnmountEFIPartition()
+	contains, err := partutil.GRUBContains(grubPath, cmd)
+	if err != nil {
+		return fmt.Errorf("cannot read GRUB file at %q,"+
+			"error msg:(%v)", grubPath, err)
+	}
+	if contains {
+		return nil
+	}
+	if err := partutil.AddCmdToGRUB(grubPath, cmd); err != nil {
+		return fmt.Errorf("cannot add commmand to GRUB file at %q,"+
+			"cmd=%q, error msg:(%v)", grubPath, cmd, err)
+	}
+	return nil
+}
