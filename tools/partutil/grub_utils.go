@@ -15,7 +15,6 @@
 package partutil
 
 import (
-	"bytes"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -26,16 +25,12 @@ import (
 // MountEFIPartition mounts the EFI partition (/dev/sda12)
 // and returns the path where grub.cfg is at.
 func MountEFIPartition() (string, error) {
-	var tmpDirBuf bytes.Buffer
-	cmd := exec.Command("mktemp", "-d")
-	cmd.Stdout = &tmpDirBuf
-	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("error in creating tmp directory, "+
+	dir, err := ioutil.TempDir("", "")
+	if err != nil {
+		return "", fmt.Errorf("error in creating tempDir, "+
 			"error msg: (%v)", err)
 	}
-	dir := tmpDirBuf.String()
-	dir = dir[:len(dir)-1]
-	cmd = exec.Command("sudo", "mount", "/dev/sda12", dir)
+	cmd := exec.Command("sudo", "mount", "/dev/sda12", dir)
 	cmd.Stdout = os.Stdout
 	if err := cmd.Run(); err != nil {
 		return "", fmt.Errorf("error in mounting /dev/sda12 at %q, "+
