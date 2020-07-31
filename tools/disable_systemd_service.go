@@ -17,6 +17,7 @@ package tools
 import (
 	"cos-customizer/tools/partutil"
 	"fmt"
+	"log"
 )
 
 // DisableSystemdService disables the auto-update servicee
@@ -40,5 +41,6 @@ func DisableSystemdService(service string) error {
 		return fmt.Errorf("cannot add commmand to GRUB file at %q,"+
 			"cmd=%q, error msg:(%v)", grubPath, cmd, err)
 	}
+	log.Printf("%q service disabled.", service)
 	return nil
 }

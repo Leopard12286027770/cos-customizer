@@ -65,6 +65,7 @@ func SealOEMPartition(oemFSSize4K uint64) error {
 		return fmt.Errorf("cannot remove veritysetup image, error msg:(%v)", err)
 	}
 	log.Println("docker image for veritysetup removed.")
+	log.Println("OEM partition sealed.")
 	return nil
 }
 
