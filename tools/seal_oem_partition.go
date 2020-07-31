@@ -102,7 +102,7 @@ func removeVeritysetupImage(imageID string) error {
 }
 
 // mountEFIPartition mounts the EFI partition (/dev/sda12)
-// and returns the path where grub.cfg is at.
+// and returns the directory path of grub.cfg.
 func mountEFIPartition() (string, error) {
 	dir, err := ioutil.TempDir("", "")
 	if err != nil {
@@ -202,6 +202,7 @@ func appendDMEntryToGRUB(grubPath, name, partUUID, hash, salt string, oemFSSize4
 			continue
 		}
 		startPos := strings.Index(line, "dm=")
+		// remove the end quote.
 		lineBuf := []rune(line[:len(line)-1])
 		// add number of entries.
 		lineBuf[startPos+4] = '2'
