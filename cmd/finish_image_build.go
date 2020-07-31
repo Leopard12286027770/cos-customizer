@@ -107,6 +107,7 @@ func (f *FinishImageBuild) SetFlags(flags *flag.FlagSet) {
 }
 
 func (f *FinishImageBuild) validate() error {
+	// The default size of the OEM partition in a COS image is assumed to be 16MB.
 	const defaultOEMSizeMB = 16
 	if f.oemSize != "" {
 		oemSizeBytes, err := partutil.ConvertSizeToBytes(f.oemSize)
@@ -163,8 +164,8 @@ func (f *FinishImageBuild) loadConfigs(files *fs.Files) (*config.Image, *config.
 func validateOEM(buildConfig *config.Build) error {
 	// The default size of a COS image (imgSize) is assumed to be 10GB.
 	const imgSize uint64 = 10
-	var sizeErrorMsg string = ""
-	var oemSizeBytes uint64 = 0
+	var sizeErrorMsg string
+	var oemSizeBytes uint64
 	var err error
 	if !buildConfig.SealOEM {
 		if buildConfig.OEMSize == "" {
@@ -215,9 +216,15 @@ func validateOEM(buildConfig *config.Build) error {
 	if (uint64)(buildConfig.DiskSize) < imgSize+oemSizeGB {
 		return fmt.Errorf(sizeErrorMsg, imgSize)
 	}
-	// shrink OEM size input (rounded down) by 1M to deal with cases
-	// where disk size is 1M smaller than needed.
-	// For example oem-size=1G disk-size-gb=12. In this case the disk size is not large enough.
+	// Shrink OEM size input (rounded down) by 1MB to deal with cases
+	// where disk size is 1MB smaller than needed.
+	// This will take 1MB from the hash tree part (the second half)
+	// of the OEM partition if seal-oem is set. Otherwise, it will
+	// take 1MB from user data space of the OEM partition.
+	// For example oem-size=1G, disk-size-gb=11, seal-oem not set.
+	// Or oem-size=1G, disk-size-gb=11, seal-oem set.
+	// In those cases the disk size is not large enough without shrinking
+	// the OEM partition size by 1MB.
 	buildConfig.OEMSize = strconv.FormatUint((oemSizeBytes>>20)-1, 10) + "M"
 	return nil
 }

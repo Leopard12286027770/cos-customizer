@@ -74,16 +74,16 @@ type Build struct {
 	GCSFiles    []string
 }
 
-// Update clears the config file and then saves the new config.Build.
-func Update(configFile *os.File, buildConfig *Build) error {
+// SaveBuildConfigToFile clears the build config file and then saves the new config.Build.
+func SaveBuildConfigToFile(configFile *os.File, buildConfig *Build) error {
 	if _, err := configFile.Seek(0, 0); err != nil {
-		return fmt.Errorf("cannot seek config file, error msg:(%v)", err)
+		return fmt.Errorf("cannot seek build config file, error msg:(%v)", err)
 	}
 	if err := configFile.Truncate(0); err != nil {
-		return fmt.Errorf("cannot truncate config file, error msg:(%v)", err)
+		return fmt.Errorf("cannot truncate build config file, error msg:(%v)", err)
 	}
 	if err := Save(configFile, buildConfig); err != nil {
-		return fmt.Errorf("cannot save config file, error msg:(%v)", err)
+		return fmt.Errorf("cannot save build config file, error msg:(%v)", err)
 	}
 	return nil
 }

@@ -127,7 +127,7 @@ func GetPartUUID(partName string) (string, error) {
 		if !strings.HasPrefix(line, partName+":") {
 			continue
 		}
-		for _, content := range strings.Split(line, " ") {
+		for _, content := range strings.Fields(line) {
 			if !strings.HasPrefix(content, "PARTUUID") {
 				continue
 			}

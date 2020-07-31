@@ -40,14 +40,14 @@ func SealOEMPartition(oemFSSize4K uint64) error {
 	if err := unmountOEMPartition(); err != nil {
 		return fmt.Errorf("cannot umount OEM partition, error msg:(%v)", err)
 	}
-	log.Println("OEM parititon unmounted.")
+	log.Println("OEM partition unmounted.")
 	hash, salt, err := veritysetup(imageID, oemFSSize4K)
 	if err != nil {
 		return fmt.Errorf("cannot run veritysetup, input:oemFSSize4K=%d, "+
 			"error msg:(%v)", oemFSSize4K, err)
 	}
 	grubPath, err := mountEFIPartition()
-	log.Println("EFI parititon mounted.")
+	log.Println("EFI partition mounted.")
 	if err != nil {
 		return fmt.Errorf("cannot mount EFI partition (/dev/sda12), error msg:(%v)", err)
 	}
@@ -104,16 +104,12 @@ func removeVeritysetupImage(imageID string) error {
 // mountEFIPartition mounts the EFI partition (/dev/sda12)
 // and returns the path where grub.cfg is at.
 func mountEFIPartition() (string, error) {
-	var tmpDirBuf bytes.Buffer
-	cmd := exec.Command("mktemp", "-d")
-	cmd.Stdout = &tmpDirBuf
-	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("error in creating tmp directory, "+
+	dir, err := ioutil.TempDir("", "")
+	if err != nil {
+		return "", fmt.Errorf("error in creating tempDir "+
 			"error msg: (%v)", err)
 	}
-	dir := tmpDirBuf.String()
-	dir = dir[:len(dir)-1]
-	cmd = exec.Command("sudo", "mount", "/dev/sda12", dir)
+	cmd := exec.Command("sudo", "mount", "/dev/sda12", dir)
 	cmd.Stdout = os.Stdout
 	if err := cmd.Run(); err != nil {
 		return "", fmt.Errorf("error in mounting /dev/sda12 at %q, "+
