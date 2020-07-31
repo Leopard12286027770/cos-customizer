@@ -28,5 +28,8 @@ if [[ $i -eq 11 ]]; then
   journalctl -u docker.service --no-pager
   exit "${docker_code}"
 fi
-sudo bash ../builtin_ctx_dir/disable_oem_mount.sh
+pushd ../builtin_ctx_dir
+sudo bash ./disable_oem_mount.sh
+echo "AAAAAAAAAAAAAAAAAAAa"
 echo "Successfully pulled ubuntu container image."
+popd
