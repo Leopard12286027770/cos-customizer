@@ -24,7 +24,11 @@ import (
 // Built by Bazel. The binary will be in data/builtin_build_context/.
 func main() {
 	log.SetOutput(os.Stdout)
-	if err := tools.DisableAutoUpdate(); err != nil {
+	args := os.Args
+	if len(args) != 2 {
+		log.Fatalln("error: must have 1 argument: service string")
+	}
+	if err := tools.DisableSystemdService(args[1]); err != nil {
 		log.Fatalln(err)
 	}
 }

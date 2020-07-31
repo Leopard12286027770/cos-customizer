@@ -19,9 +19,9 @@ import (
 	"fmt"
 )
 
-// DisableAutoUpdate disables the auto-update servicee
-func DisableAutoUpdate() error {
-	const cmd = "systemd.mask=update-engine.service"
+// DisableSystemdService disables the auto-update servicee
+func DisableSystemdService(service string) error {
+	cmd := "systemd.mask=" + service
 	grubPath, err := partutil.MountEFIPartition()
 	if err != nil {
 		return fmt.Errorf("cannot mount EFI partition,"+

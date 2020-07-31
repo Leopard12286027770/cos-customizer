@@ -13,7 +13,7 @@
 # limitations under the License.
 
 substitutions:
-  "_TEST": "disable_auto_update_test"
+  "_TEST": "disable_systemd_service_test"
   "_INPUT_IMAGE": "cos-81-12871-148-0"
   "_INPUT_PROJECT": "cos-cloud"
 steps:

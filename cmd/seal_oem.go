@@ -77,5 +77,13 @@ func (s *SealOEM) Execute(_ context.Context, f *flag.FlagSet, args ...interface{
 		log.Println(fmt.Errorf("cannot append state file, error msg:(%v)", err))
 		return subcommands.ExitFailure
 	}
+	if err := fs.AppendStateFile(files.StateFile, fs.Builtin, "disable_auto_update.sh", ""); err != nil {
+		log.Println(fmt.Errorf("cannot append state file, error msg:(%v)", err))
+		return subcommands.ExitFailure
+	}
+	if err := fs.AppendStateFile(files.StateFile, fs.Builtin, "disable_oem_mount.sh", ""); err != nil {
+		log.Println(fmt.Errorf("cannot append state file, error msg:(%v)", err))
+		return subcommands.ExitFailure
+	}
 	return subcommands.ExitSuccess
 }

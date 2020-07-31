@@ -14,8 +14,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set -o errexit
-
-sudo mount -o remount,exec /var
-sudo chmod 777 ./disable_systemd_service.bin
-sudo ./disable_systemd_service.bin update-engine.service
+echo "hello" > /mnt/stateful_partition/hello
+docker_code=0
+i=1
+while [[ $i -le 10 ]]; do
+  echo "Pulling ubuntu container image... [${i}/10]"
+  docker pull ubuntu && break || docker_code="$?"
+  i=$((i+1))
+done
+if [[ $i -eq 11 ]]; then
+  echo "Pulling ubuntu failed."
+  echo "Docker journal logs:"
+  journalctl -u docker.service --no-pager
+  exit "${docker_code}"
+fi
+sudo bash ../builtin_ctx_dir/disable_oem_mount.sh
+echo "Successfully pulled ubuntu container image."

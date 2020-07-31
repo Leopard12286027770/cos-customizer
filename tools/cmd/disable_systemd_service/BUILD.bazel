@@ -16,14 +16,14 @@ load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
 
 go_library(
     name = "go_default_library",
-    srcs = ["disable_auto_update_bin.go"],
-    importpath = "cos-customizer/tools/cmd/disable_auto_update/",
+    srcs = ["disable_systemd_service_bin.go"],
+    importpath = "cos-customizer/tools/cmd/disable_systemd_service/",
     visibility = ["//visibility:private"],
     deps = ["//tools:go_default_library"],
 )
 
 go_binary(
-    name = "disable_auto_update_bin",
+    name = "disable_systemd_service_bin",
     embed = [":go_default_library"],
     visibility = ["//visibility:public"],
 )
