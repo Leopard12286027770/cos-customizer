@@ -29,7 +29,3 @@ if [[ $i -eq 11 ]]; then
   exit "${docker_code}"
 fi
 echo "Successfully pulled ubuntu container image."
-# run builtin script with user script in `run-script` subcommand
-pushd ../builtin_ctx_dir
-sudo bash ./disable_oem_mount.sh
-popd
