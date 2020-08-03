@@ -25,7 +25,7 @@ import (
 )
 
 // DisableAutoUpdate implements subcommands.Command for the "disable-auto-update" command.
-// It disables auto-update systemd unit.
+// It writes a script name to the state file and run the script in builtin_build_context.
 type DisableAutoUpdate struct{}
 
 // Name implements subcommands.Command.Name.
@@ -47,8 +47,7 @@ func (d *DisableAutoUpdate) Usage() string {
 // SetFlags implements subcommands.Command.SetFlags.
 func (d *DisableAutoUpdate) SetFlags(f *flag.FlagSet) {}
 
-// Execute implements subcommands.Command.Execute. It configures the current image build process to
-// customize the result image with a shell script.
+// Execute implements subcommands.Command.Execute. It disables the auto-update systemd service.
 func (d *DisableAutoUpdate) Execute(_ context.Context, f *flag.FlagSet, args ...interface{}) subcommands.ExitStatus {
 	if f.NArg() != 0 {
 		f.Usage()
