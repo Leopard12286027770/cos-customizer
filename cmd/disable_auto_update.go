@@ -25,7 +25,7 @@ import (
 )
 
 // DisableAutoUpdate implements subcommands.Command for the "disable-auto-update" command.
-// It writes a script name to the state file and run the script in builtin_build_context.
+// It disables auto-update systemd unit.
 type DisableAutoUpdate struct{}
 
 // Name implements subcommands.Command.Name.

@@ -50,8 +50,8 @@ func (s *SealOEM) Usage() string {
 // SetFlags implements subcommands.Command.SetFlags.
 func (s *SealOEM) SetFlags(f *flag.FlagSet) {}
 
-// Execute implements subcommands.Command.Execute. It configures the current image build process to
-// customize the result image with a shell script.
+// Execute implements subcommands.Command.Execute. It modifies the kernel command line
+// to enalbe dm-verity check on /dev/sda8 and disables auto-update and usr-share-oem.mount.
 func (s *SealOEM) Execute(_ context.Context, f *flag.FlagSet, args ...interface{}) subcommands.ExitStatus {
 	if f.NArg() != 0 {
 		f.Usage()
