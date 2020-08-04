@@ -31,6 +31,7 @@ fatal() {
 }
 
 switch_root(){
+  trap 'fatal exiting due to errors' EXIT
   # Get reclaim_sda3 input from metadata.
   # If needed, switch root partition to /dev/sda5 (rootB)
   local -r reclaim="$(/usr/share/google/get_metadata_value \
@@ -44,6 +45,7 @@ switch_root(){
   sudo cgpt prioritize -P 1 -i 2 /dev/sda
   # overwrite trap to avoid build failure triggered by reboot.
   trap - EXIT
+  echo "Rebooting..."
   reboot
   # keep it inside of this function until reboot kills the process
   while :
@@ -364,7 +366,6 @@ cleanup() {
 
 main() {
   trap 'fatal exiting due to errors' EXIT
-  switch_root
   enter_workdir
   setup
   wait_daisy_logging
@@ -382,6 +383,7 @@ main() {
   cleanup
 }
 
+switch_root | sed "s/^/PrepareStatus: /"
 main 2>&1 | sed "s/^/BuildStatus: /"
 trap - EXIT
 echo "BuildSucceeded: Build completed with no errors. Shutting down..."

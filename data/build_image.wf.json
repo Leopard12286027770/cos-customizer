@@ -61,15 +61,16 @@
         }
       ]
     },
-    "wait-preload-start": {
+    "wait-preload-prepare": {
       "WaitForInstancesSignal": [
         {
           "Name": "preload-vm",
           "Interval": "2s",
           "SerialOutput": {
             "Port": 3,
-            "SuccessMatch": "Done switching root",
-            "StatusMatch": "BuildStatus:"
+            "FailureMatch": "BuildFailed:",
+            "SuccessMatch": "Done switching root partition",
+            "StatusMatch": "PrepareStatus:"
           }
         }
       ]

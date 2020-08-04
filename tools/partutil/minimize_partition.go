@@ -26,6 +26,8 @@ import (
 // returns the next sector of the end sector.
 // The smallest partition from fdisk is 1 sector partition.
 func MinimizePartition(disk string, partNumInt int) (uint64, error) {
+	// Make sure the next partition can start at a 4K aligned sector.
+	const minSize = 4096 // 2 MB
 	if len(disk) == 0 || partNumInt <= 0 {
 		return 0, fmt.Errorf("empty disk name or nonpositive part number, "+
 			"input: disk=%q, partNumInt=%d", disk, partNumInt)
@@ -50,12 +52,12 @@ func MinimizePartition(disk string, partNumInt int) (uint64, error) {
 			"error msg: (%v)", disk, disk, partNumInt, err)
 	}
 
-	var endSector uint64
+	var startSector uint64
 
 	// edit partition table.
 	table, err = ParsePartitionTable(table, partName, true, func(p *PartContent) {
-		endSector = p.Start
-		p.Size = 1
+		startSector = p.Start
+		p.Size = minSize
 	})
 	if err != nil {
 		return 0, fmt.Errorf("error when editing partition table of %q, "+
@@ -76,5 +78,5 @@ func MinimizePartition(disk string, partNumInt int) (uint64, error) {
 	}
 
 	log.Printf("\nCompleted minimizing %q\n\n", partName)
-	return endSector + 1, nil
+	return startSector + minSize, nil
 }
