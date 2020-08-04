@@ -62,7 +62,7 @@ func HandleDiskLayout(disk string, statePartNum, oemPartNum int, oemSize string,
 			"error msg: (%v)", disk, statePartNum, oemPartNum, oemSize, reclaimSDA3, err)
 	}
 
-	oldOEMSizeBytes := oldOEMSizeSector << 8 // change unit to bytes.
+	oldOEMSizeBytes := oldOEMSizeSector << 9 // change unit to bytes.
 	var startPointSector uint64
 
 	if reclaimSDA3 {
