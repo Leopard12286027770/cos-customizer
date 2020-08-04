@@ -68,6 +68,7 @@ func ParsePartitionTable(table, partName string, change bool, f func(p *PartCont
 			return "", fmt.Errorf("cannot convert %q to int, "+
 				"partition info: %q, error msg: (%v)", strings.TrimSpace(startSec[1]), line, err)
 		}
+		// run reading or changing function on the PartContent struct.
 		f(&p)
 
 		// need to rebuild the partition table.

@@ -14,8 +14,67 @@
 
 package partutil
 
+import (
+	"bytes"
+	"fmt"
+	"log"
+	"os"
+	"os/exec"
+)
+
 // MinimizePartition minimizes the input partition and
-// returns the end sector.
-func MinimizePartition(partName string) (uint64, error) {
-	return 0, nil
+// returns the next sector of the end sector.
+// The smallest partition from fdisk is 1 sector partition.
+func MinimizePartition(disk string, partNumInt int) (uint64, error) {
+	if len(disk) == 0 || partNumInt <= 0 {
+		return 0, fmt.Errorf("empty disk name or nonpositive part number, "+
+			"input: disk=%q, partNumInt=%d", disk, partNumInt)
+	}
+
+	// get partition number string
+	partNum, err := PartNumIntToString(disk, partNumInt)
+	if err != nil {
+		return 0, fmt.Errorf("error in converting partition number, "+
+			"input: disk=%q, partNumInt=%d, "+
+			"error msg: (%v)", disk, partNumInt, err)
+	}
+
+	partName := disk + partNum
+	var tableBuffer bytes.Buffer
+
+	// dump partition table.
+	table, err := ReadPartitionTable(disk)
+	if err != nil {
+		return 0, fmt.Errorf("cannot read partition table of %q, "+
+			"input: disk=%q, partNumInt=%d, "+
+			"error msg: (%v)", disk, disk, partNumInt, err)
+	}
+
+	var endSector uint64
+
+	// edit partition table.
+	table, err = ParsePartitionTable(table, partName, true, func(p *PartContent) {
+		endSector = p.Start
+		p.Size = 1
+	})
+	if err != nil {
+		return 0, fmt.Errorf("error when editing partition table of %q, "+
+			"input: disk=%q, partNumInt=%d, "+
+			"error msg: (%v)", disk, disk, partNumInt, err)
+	}
+
+	tableBuffer.WriteString(table)
+
+	// write partition table back.
+	writeTableCmd := exec.Command("sudo", "sfdisk", "--no-reread", disk)
+	writeTableCmd.Stdin = &tableBuffer
+	writeTableCmd.Stdout = os.Stdout
+	if err := writeTableCmd.Run(); err != nil {
+		return 0, fmt.Errorf("error in writing partition table back to %q, "+
+			"input: disk=%q, partNumInt=%d, "+
+			"error msg: (%v)", disk, disk, partNumInt, err)
+	}
+
+	log.Printf("\nCompleted minimizing %q\n\n", partName)
+	return endSector + 1, nil
 }

@@ -101,6 +101,6 @@ func ExtendPartition(disk string, partNumInt int, end uint64) error {
 			"error msg: (%v)", partName, disk, partNumInt, end, err)
 	}
 
-	log.Printf("\nCompleted updating file system of %s\n\n", partName)
+	log.Printf("\nCompleted updating file system of %q\n\n", partName)
 	return nil
 }

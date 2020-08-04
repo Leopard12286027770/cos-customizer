@@ -23,11 +23,33 @@ set -o nounset
 
 
 PYTHON_IMG="python:2.7.15-alpine"
-OEM_CHECK_FILE="/mnt/stateful_partition/oem"
+LAYOUT_CHECK_FILE="/mnt/stateful_partition/layout"
 
 fatal() {
   echo -e "BuildFailed: ${*}"
   exit 1
+}
+
+switch_root(){
+  # Get reclaim_sda3 input from metadata.
+  # If needed, switch root partition to /dev/sda5 (rootB)
+  local -r reclaim="$(/usr/share/google/get_metadata_value \
+    attributes/reclaim_sda3)"
+  echo "Checking the need to switch root partition..."
+  if [[ "${reclaim}" == false ]] || [[ "$( sudo rootdev -s | grep sda5)" ]]; then
+    echo "Done switching root partition."
+    return
+  fi
+  sudo cgpt prioritize -P 5 -i 4 /dev/sda
+  sudo cgpt prioritize -P 1 -i 2 /dev/sda
+  # overwrite trap to avoid build failure triggered by reboot.
+  trap - EXIT
+  reboot
+  # keep it inside of this function until reboot kills the process
+  while :
+    do
+      sleep 1
+    done
 }
 
 enter_workdir() {
@@ -156,9 +178,11 @@ EOF
 # this unit runs at shutdown time after everything but /tmp is unmounted
 create_run_after_unmount_unit(){
   mount -o remount,exec /tmp
-  # get OEMSize user input from metadata
+  # get user input from metadata
   local -r oem_size="$(/usr/share/google/get_metadata_value \
     attributes/OEMSize)"
+  local -r reclaim="$(/usr/share/google/get_metadata_value \
+    attributes/reclaim_sda3)"
   cat > /etc/systemd/system/last-run.service<<EOF
 [Unit]
 Description=Run after everything unmounted
@@ -171,7 +195,7 @@ After=tmp.mount
 Type=oneshot
 RemainAfterExit=true
 ExecStart=/bin/true
-ExecStop=/bin/bash -c '/tmp/handle_disk_layout.bin /dev/sda 1 8 ${oem_size}|sed "s/^/BuildStatus: /"'
+ExecStop=/bin/bash -c '/tmp/handle_disk_layout.bin /dev/sda 1 8 ${oem_size} ${reclaim}|sed "s/^/BuildStatus: /"'
 TimeoutStopSec=600
 StandardOutput=tty
 StandardError=tty
@@ -180,34 +204,39 @@ EOF
 }
 
 handle_disk_layout(){
-  echo "Checking whether need to extend OEM partition..."
+  echo "Checking whether need to change disk layout..."
 
   # get user input from metadata
   local -r oem_size="$(/usr/share/google/get_metadata_value \
     attributes/OEMSize)"
   local -r oem_fs_size_4k="$(/usr/share/google/get_metadata_value \
     attributes/OEMFSSize4K)"
+  local -r reclaim="$(/usr/share/google/get_metadata_value \
+    attributes/reclaim_sda3)"
 
-  if [[ -z "${oem_size}" ]]; then 
-    echo "No request to change OEM partition."
+  if [[ -z "${oem_size}" ]] && [[ reclaim == false ]]; then 
+    echo "No request to change disk layout."
     return
   fi
-  if [[ -e "${OEM_CHECK_FILE}" ]]; then
-    echo "Resizing OEM partition file system..."
-    umount /dev/sda8
-    e2fsck -fp /dev/sda8
-    if [[ "${oem_fs_size_4k}" -eq "0" ]]; then
-      resize2fs /dev/sda8
-    else
-      resize2fs /dev/sda8 "${oem_fs_size_4k}"
+  if [[ -e "${LAYOUT_CHECK_FILE}" ]]; then
+    # OEM partition resized, need to resize the filesystem
+    if [[ -n "${oem_size}" ]]; then
+      echo "Resizing OEM partition filesystem..."
+      umount /dev/sda8
+      e2fsck -fp /dev/sda8
+      if [[ "${oem_fs_size_4k}" -eq "0" ]]; then
+        resize2fs /dev/sda8
+      else
+        resize2fs /dev/sda8 "${oem_fs_size_4k}"
+      fi
+      systemctl start usr-share-oem.mount
     fi
-    systemctl start usr-share-oem.mount
     fdisk -l
     df -h
-    echo "Successfully extended OEM partition."
+    echo "Successfully modified disk layout."
   else
-    touch "${OEM_CHECK_FILE}"
-    echo "Extending OEM partition to "${oem_size}"..."
+    touch "${LAYOUT_CHECK_FILE}"
+    echo "Modifying disk layout..."
     create_run_after_unmount_unit
     mv builtin_ctx_dir/handle_disk_layout.bin /tmp/handle_disk_layout.bin
     systemctl --no-block start last-run.service
@@ -329,12 +358,13 @@ cleanup() {
   rm -rf /var/lib/systemd/*
   rm -rf /var/lib/update_engine/*
   rm -rf /var/lib/whitelist/*
-  rm -f OEM_CHECK_FILE
+  rm -f LAYOUT_CHECK_FILE
   echo "Done cleaning up instance state."
 }
 
 main() {
   trap 'fatal exiting due to errors' EXIT
+  switch_root
   enter_workdir
   setup
   wait_daisy_logging
