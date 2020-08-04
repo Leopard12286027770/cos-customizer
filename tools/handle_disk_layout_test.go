@@ -30,7 +30,7 @@ import (
 // 2.partition 2, middle partition, 100K
 // 3.partition 1, stateful partition, 100K
 
-func TestExtendOEMPartitionFails(t *testing.T) {
+func TestHandleDiskLayoutFails(t *testing.T) {
 	var testNames partutiltest.TestNames
 	t.Cleanup(func() { partutiltest.TearDown(&testNames) })
 	partutiltest.SetupFakeDisk("tmp_disk_extend_oem_partition_fails", "partutil/", t, &testNames)
@@ -109,14 +109,14 @@ func TestExtendOEMPartitionFails(t *testing.T) {
 
 	for _, input := range testData {
 		t.Run(input.testName, func(t *testing.T) {
-			if err := ExtendOEMPartition(input.disk, input.statePartNum, input.oemPartNum, input.size); err == nil {
+			if err := HandleDiskLayout(input.disk, input.statePartNum, input.oemPartNum, input.size, false); err == nil {
 				t.Fatalf("error not found in test %s", input.testName)
 			}
 		})
 	}
 }
 
-func TestExtendOEMPartitionWarnings(t *testing.T) {
+func TestHandleDiskLayoutWarnings(t *testing.T) {
 	var testNames partutiltest.TestNames
 	t.Cleanup(func() { partutiltest.TearDown(&testNames) })
 	partutiltest.SetupFakeDisk("tmp_disk_extend_oem_partition_warnings", "partutil/", t, &testNames)
@@ -147,21 +147,21 @@ func TestExtendOEMPartitionWarnings(t *testing.T) {
 
 	for _, input := range testData {
 		t.Run(input.testName, func(t *testing.T) {
-			if err := ExtendOEMPartition(input.disk, input.statePartNum, input.oemPartNum, input.size); err != nil {
+			if err := HandleDiskLayout(input.disk, input.statePartNum, input.oemPartNum, input.size, false); err != nil {
 				t.Fatalf("error in test %s, error msg: (%v)", input.testName, err)
 			}
 		})
 	}
 }
 
-func TestExtendOEMPartitionPasses(t *testing.T) {
+func TestHandleDiskLayoutPasses(t *testing.T) {
 	var testNames partutiltest.TestNames
 	t.Cleanup(func() { partutiltest.TearDown(&testNames) })
 	partutiltest.SetupFakeDisk("tmp_disk_extend_oem_partition_passes", "partutil/", t, &testNames)
 
 	diskName := testNames.DiskName
 
-	if err := ExtendOEMPartition(diskName, 1, 8, "200K"); err != nil {
+	if err := HandleDiskLayout(diskName, 1, 8, "200K", false); err != nil {
 		t.Fatalf("error when extending OEM partition, error msg: (%v)", err)
 	}
 

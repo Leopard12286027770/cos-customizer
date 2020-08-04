@@ -171,7 +171,7 @@ After=tmp.mount
 Type=oneshot
 RemainAfterExit=true
 ExecStart=/bin/true
-ExecStop=/bin/bash -c '/tmp/extend_oem.bin /dev/sda 1 8 ${oem_size}|sed "s/^/BuildStatus: /"'
+ExecStop=/bin/bash -c '/tmp/handle_disk_layout.bin /dev/sda 1 8 ${oem_size}|sed "s/^/BuildStatus: /"'
 TimeoutStopSec=600
 StandardOutput=tty
 StandardError=tty
@@ -179,7 +179,7 @@ TTYPath=/dev/ttyS2
 EOF
 }
 
-extend_oem_partition(){
+handle_disk_layout(){
   echo "Checking whether need to extend OEM partition..."
 
   # get user input from metadata
@@ -209,7 +209,7 @@ extend_oem_partition(){
     touch "${OEM_CHECK_FILE}"
     echo "Extending OEM partition to "${oem_size}"..."
     create_run_after_unmount_unit
-    mv builtin_ctx_dir/extend_oem.bin /tmp/extend_oem.bin
+    mv builtin_ctx_dir/handle_disk_layout.bin /tmp/handle_disk_layout.bin
     systemctl --no-block start last-run.service
     stop_journald_service
     echo "Rebooting..."
@@ -341,7 +341,7 @@ main() {
   echo "Downloading source artifacts from GCS..."
   fetch_user_ctx
   fetch_builtin_ctx
-  extend_oem_partition
+  handle_disk_layout
   fetch_state_file
   docker rmi "${PYTHON_IMG}" || :
   echo "Successfully downloaded source artifacts from GCS."
