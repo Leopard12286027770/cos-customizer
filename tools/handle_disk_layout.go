@@ -32,9 +32,14 @@ import (
 // OEMSize can be the number of sectors (without unit) or size like "3G", "100M", "10000K" or "99999B".
 // If no need to extend the OEM partition, oemSize=0.
 func HandleDiskLayout(disk string, statePartNum, oemPartNum int, oemSize string, reclaimSDA3 bool) error {
-	if len(disk) <= 0 || statePartNum <= 0 || oemPartNum <= 0 || len(oemSize) <= 0 {
+	const minSize = 8 // 4K bytes
+	if len(disk) <= 0 || statePartNum <= 0 || oemPartNum <= 0 {
 		return fmt.Errorf("empty or non-positive input: disk=%q, statePartNum=%d, oemPartNum=%d, oemSize=%q",
 			disk, statePartNum, oemPartNum, oemSize)
+	}
+
+	if len(oemSize) == 0 {
+		oemSize = "0"
 	}
 
 	// print the old partition table.
@@ -66,14 +71,34 @@ func HandleDiskLayout(disk string, statePartNum, oemPartNum int, oemSize string,
 	var startPointSector uint64
 
 	if reclaimSDA3 {
-		// start point is the next sector of the end of shrinked sda3
-		startPointSector, err = partutil.MinimizePartition("/dev/sda", 3)
+		// check whether sda3 has been already shrinked.
+		sda3SizeSector, err := partutil.ReadPartitionSize("/dev/sda", 3)
 		if err != nil {
-			return fmt.Errorf("error in reclaiming sda3, "+
+			return fmt.Errorf("error in reading the size of sda3, "+
 				"input: disk=%q, statePartNum=%d, oemPartNum=%d, oemSize=%q, reclaimSDA3=%t, "+
 				"error msg: (%v)", disk, statePartNum, oemPartNum, oemSize, reclaimSDA3, err)
 		}
-		log.Println("Shrinked /dev/sda3.")
+		// not shrinked yet.
+		if sda3SizeSector > minSize {
+			_, err = partutil.MinimizePartition("/dev/sda", 3)
+			if err != nil {
+				return fmt.Errorf("error in reclaiming sda3, "+
+					"input: disk=%q, statePartNum=%d, oemPartNum=%d, oemSize=%q, reclaimSDA3=%t, "+
+					"error msg: (%v)", disk, statePartNum, oemPartNum, oemSize, reclaimSDA3, err)
+			}
+			log.Println("Shrinked /dev/sda3.")
+			// need to reboot to reload the partition table.
+			return nil
+		}
+		// no need to shrink sda3 again.
+		sda3StartSector, err := partutil.ReadPartitionStart("/dev/sda", 3)
+		if err != nil {
+			return fmt.Errorf("error in reading the start of sda3, "+
+				"input: disk=%q, statePartNum=%d, oemPartNum=%d, oemSize=%q, reclaimSDA3=%t, "+
+				"error msg: (%v)", disk, statePartNum, oemPartNum, oemSize, reclaimSDA3, err)
+		}
+		startPointSector = sda3StartSector + minSize
+
 	} else {
 		// start point is the original start sector of the stateful partition.
 		startPointSector, err = partutil.ReadPartitionStart(disk, statePartNum)
@@ -115,7 +140,8 @@ func HandleDiskLayout(disk string, statePartNum, oemPartNum int, oemSize string,
 	}
 
 	// leave enough space before the stateful partition for the OEM partition.
-	newStateStartSector := startPointSector + (newOEMSizeBytes >> 8)
+	// and shrink the OEM partition to make the new start 4k aligned.
+	newStateStartSector := partutil.FindLast4KSector(startPointSector + (newOEMSizeBytes >> 9))
 
 	// move the stateful partition.
 	if err := partutil.MovePartition(disk, statePartNum, strconv.FormatUint(newStateStartSector, 10)); err != nil {

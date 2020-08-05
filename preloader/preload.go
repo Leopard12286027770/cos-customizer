@@ -161,13 +161,13 @@ func writeDaisyWorkflow(inputWorkflow string, outputImage *config.Image, buildSp
 	}
 
 	// template content for the step resize-disk.
-	// If the oem-size is set, or need to reclaim sda3,
+	// If the oem-size is set, or need to reclaim sda3 (with disk-size-gb set),
 	// create the disk with the default size, and then resize the disk.
 	// Otherwise, a place holder is used. The disk is created with provided disk-size-gb or
 	// the default size. And the disk will not be resized.
 	// The place holder is needed because ResizeDisk API requires a larger size than the original disk.
 	var resizeDiskJSON string
-	if buildSpec.OEMSize != "" || buildSpec.ReclaimSDA3 {
+	if (buildSpec.OEMSize != "" || buildSpec.ReclaimSDA3) && buildSpec.DiskSize != 0 {
 		// actual disk size
 		resizeDiskJSON = fmt.Sprintf(`"ResizeDisks": [{"Name": "boot-disk","SizeGb": "%d"}]`, buildSpec.DiskSize)
 	} else {

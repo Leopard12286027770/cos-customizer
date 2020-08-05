@@ -27,7 +27,7 @@ import (
 // The smallest partition from fdisk is 1 sector partition.
 func MinimizePartition(disk string, partNumInt int) (uint64, error) {
 	// Make sure the next partition can start at a 4K aligned sector.
-	const minSize = 4096 // 2 MB
+	const minSize = 8 // 4K bytes
 	if len(disk) == 0 || partNumInt <= 0 {
 		return 0, fmt.Errorf("empty disk name or nonpositive part number, "+
 			"input: disk=%q, partNumInt=%d", disk, partNumInt)

@@ -23,7 +23,9 @@ set -o nounset
 
 
 PYTHON_IMG="python:2.7.15-alpine"
-LAYOUT_CHECK_FILE="/mnt/stateful_partition/layout"
+LAYOUT_CHECK_FILE1="/mnt/stateful_partition/layout1"
+LAYOUT_CHECK_FILE2="/mnt/stateful_partition/layout2"
+INPUT_DEV_NAME="persistent-disk-0"
 
 fatal() {
   echo -e "BuildFailed: ${*}"
@@ -32,17 +34,19 @@ fatal() {
 
 switch_root(){
   trap 'fatal exiting due to errors' EXIT
-  # Get reclaim_sda3 input from metadata.
+  # Get ReclaimSDA3 input from metadata.
   # If needed, switch root partition to /dev/sda5 (rootB)
   local -r reclaim="$(/usr/share/google/get_metadata_value \
-    attributes/reclaim_sda3)"
+    attributes/ReclaimSDA3)"
   echo "Checking the need to switch root partition..."
   if [[ "${reclaim}" == false ]] || [[ "$( sudo rootdev -s | grep sda5)" ]]; then
     echo "Done switching root partition."
     return
   fi
+  echo "Copying sda3 to sda5..."
+  dd if="/dev/sda3" of="/dev/sda5" bs=4M
+  echo "sda3 copied to sda5."
   sudo cgpt prioritize -P 5 -i 4 /dev/sda
-  sudo cgpt prioritize -P 1 -i 2 /dev/sda
   # overwrite trap to avoid build failure triggered by reboot.
   trap - EXIT
   echo "Rebooting..."
@@ -184,7 +188,7 @@ create_run_after_unmount_unit(){
   local -r oem_size="$(/usr/share/google/get_metadata_value \
     attributes/OEMSize)"
   local -r reclaim="$(/usr/share/google/get_metadata_value \
-    attributes/reclaim_sda3)"
+    attributes/ReclaimSDA3)"
   cat > /etc/systemd/system/last-run.service<<EOF
 [Unit]
 Description=Run after everything unmounted
@@ -197,7 +201,7 @@ After=tmp.mount
 Type=oneshot
 RemainAfterExit=true
 ExecStart=/bin/true
-ExecStop=/bin/bash -c '/tmp/handle_disk_layout.bin /dev/sda 1 8 ${oem_size} ${reclaim}|sed "s/^/BuildStatus: /"'
+ExecStop=/bin/bash -c '/tmp/handle_disk_layout.bin /dev/sda 1 8 "${oem_size}" "${reclaim}" |sed "s/^/BuildStatus: /"'
 TimeoutStopSec=600
 StandardOutput=tty
 StandardError=tty
@@ -206,22 +210,23 @@ EOF
 }
 
 handle_disk_layout(){
-  echo "Checking whether need to change disk layout..."
-
   # get user input from metadata
   local -r oem_size="$(/usr/share/google/get_metadata_value \
     attributes/OEMSize)"
   local -r oem_fs_size_4k="$(/usr/share/google/get_metadata_value \
     attributes/OEMFSSize4K)"
   local -r reclaim="$(/usr/share/google/get_metadata_value \
-    attributes/reclaim_sda3)"
+    attributes/ReclaimSDA3)"
+  local -r sda3_size = "$(sudo fdisk -s /dev/sda3)"
 
-  if [[ -z "${oem_size}" ]] && [[ reclaim == false ]]; then 
+  echo "Checking whether need to change disk layout..."
+  if [[ -z "${oem_size}" ]] && [[ "${reclaim}" == false ]]; then 
     echo "No request to change disk layout."
     return
   fi
-  if [[ -e "${LAYOUT_CHECK_FILE}" ]]; then
-    # OEM partition resized, need to resize the filesystem
+  # if to reclaim sda3, the vm will need to change partition table and reboot twice
+  if [[ -e "${LAYOUT_CHECK_FILE1}" && "${reclaim}" == false ]] || [[ -e "${LAYOUT_CHECK_FILE2}" ]]; then
+    # disk layout changed, need to resize the filesystem
     if [[ -n "${oem_size}" ]]; then
       echo "Resizing OEM partition filesystem..."
       umount /dev/sda8
@@ -237,7 +242,11 @@ handle_disk_layout(){
     df -h
     echo "Successfully modified disk layout."
   else
-    touch "${LAYOUT_CHECK_FILE}"
+    if [[ -e "${LAYOUT_CHECK_FILE1}"  ]]; then 
+      touch "${LAYOUT_CHECK_FILE2}"
+    else
+      touch "${LAYOUT_CHECK_FILE1}"
+    fi
     echo "Modifying disk layout..."
     create_run_after_unmount_unit
     mv builtin_ctx_dir/handle_disk_layout.bin /tmp/handle_disk_layout.bin
@@ -360,7 +369,8 @@ cleanup() {
   rm -rf /var/lib/systemd/*
   rm -rf /var/lib/update_engine/*
   rm -rf /var/lib/whitelist/*
-  rm -f LAYOUT_CHECK_FILE
+  rm -f "${LAYOUT_CHECK_FILE1}"
+  rm -f "${LAYOUT_CHECK_FILE2}"
   echo "Done cleaning up instance state."
 }
 

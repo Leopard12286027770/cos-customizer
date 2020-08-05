@@ -50,6 +50,7 @@
             "DaisyAck": "${SCRATCHPATH}/daisy_ack",
             "OEMSize":  "${oem_size}",
             "OEMFSSize4K": "${oem_fs_size_4k}",
+            "ReclaimSDA3":"${reclaim_sda3}",
             "user-data": "${SOURCE:cloud-config}",
             "block-project-ssh-keys": "TRUE",
             "cos-update-strategy": "update_disabled"
@@ -126,8 +127,8 @@
   },
   "Dependencies": {
     "run": ["setup"],
-    "wait-preload-start": ["run"],
-    "resize-disk":["wait-preload-start"],
+    "wait-preload-prepare": ["run"],
+    "resize-disk":["wait-preload-prepare"],
     "send-ack": ["resize-disk"],
     "wait-preload-finished": ["send-ack"],
     "wait-vm-shutdown": ["wait-preload-finished"],
