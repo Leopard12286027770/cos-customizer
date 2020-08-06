@@ -30,7 +30,8 @@ import (
 // Device     Start   End Sectors  Size Type
 // ori_disk1    434   633     200  100K Linux filesystem
 // ori_disk2    234   433     200  100K Linux filesystem
-// ori_disk8     34   233     200  100K Linux filesystemskk
+// ori_disk8     34   233     200  100K Linux filesystem
+// ori_disk12  1100  1106       7  3.5K Linux filesystem
 
 // Partition table entries are not in disk order.
 
@@ -216,5 +217,81 @@ func TestReadPartitionStartPasses(t *testing.T) {
 	}
 	if start != input.want {
 		t.Fatalf("wrong result in test %s, start: %d, expected: %d", input.testName, start, input.want)
+	}
+}
+
+func TestMinimizePartitionFails(t *testing.T) {
+	var testNames partutiltest.TestNames
+	t.Cleanup(func() { partutiltest.TearDown(&testNames) })
+	partutiltest.SetupFakeDisk("tmp_disk_minimize_partition_fails", "", t, &testNames)
+
+	diskName := testNames.DiskName
+	testData := []struct {
+		testName string
+		disk     string
+		partNum  int
+	}{{
+		testName: "InvalidDisk",
+		disk:     "./testdata/no_disk",
+		partNum:  1,
+	}, {
+		testName: "InvalidPartition",
+		disk:     diskName,
+		partNum:  0,
+	}, {
+		testName: "NonexistPartition",
+		disk:     diskName,
+		partNum:  100,
+	}, {
+		testName: "EmptyDiskName",
+		disk:     "",
+		partNum:  100,
+	},
+	}
+
+	for _, input := range testData {
+		t.Run(input.testName, func(t *testing.T) {
+			if _, err := MinimizePartition(input.disk, input.partNum); err == nil {
+				t.Fatalf("error not found in test %s", input.testName)
+			}
+		})
+	}
+}
+
+func TestMinimizePartitionPasses(t *testing.T) {
+	var testNames partutiltest.TestNames
+	t.Cleanup(func() { partutiltest.TearDown(&testNames) })
+	partutiltest.SetupFakeDisk("tmp_disk_minimize_partition_fails", "", t, &testNames)
+
+	diskName := testNames.DiskName
+	testData := []struct {
+		testName string
+		disk     string
+		partNum  int
+		want     uint64
+	}{
+		{
+			testName: "200KPart",
+			disk:     diskName,
+			partNum:  8,
+			want:     42,
+		}, {
+			testName: "SmallPart",
+			disk:     diskName,
+			partNum:  12,
+			want:     1108,
+		},
+	}
+
+	for _, input := range testData {
+		t.Run(input.testName, func(t *testing.T) {
+			res, err := MinimizePartition(input.disk, input.partNum)
+			if err != nil {
+				t.Fatalf("error in test %s, error msg: (%v)", input.testName, err)
+			}
+			if res != input.want {
+				t.Fatalf("wrong result in %q, res: %q, expected: %q", input.testName, res, input.want)
+			}
+		})
 	}
 }

@@ -208,4 +208,35 @@ func TestConvertSizeToGBRoundUpPasses(t *testing.T) {
 	}
 }
 
+func TestFindLast4KSectorPasses(t *testing.T) {
+	testData := []struct {
+		testName string
+		input    uint64
+		want     uint64
+	}{
+		{
+			testName: "ToZero",
+			input:    7,
+			want:     0,
+		}, {
+			testName: "SmallNum",
+			input:    14,
+			want:     8,
+		}, {
+			testName: "LargeNum",
+			input:    987654316,
+			want:     987654312,
+		},
+	}
+
+	for _, input := range testData {
+		t.Run(input.testName, func(t *testing.T) {
+			res := FindLast4KSector(input.input)
+			if res != input.want {
+				t.Fatalf("wrong result: %q to %d, expect: %d", input.input, res, input.want)
+			}
+		})
+	}
+}
+
 // cannot test GetPartUUID() because test disk file "ori_disk" only has UUID, but not PARTUUID

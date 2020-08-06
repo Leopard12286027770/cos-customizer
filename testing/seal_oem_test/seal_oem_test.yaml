@@ -16,9 +16,15 @@ substitutions:
   "_TEST": "seal_oem_test"
   "_INPUT_IMAGE": "cos-81-12871-148-0"
   "_INPUT_PROJECT": "cos-cloud"
+  "_OEM_SIZE": ""
+  "_DISK_SIZE": ""
+  "_OEM_SIZE_TH": ""
 steps:
 - name: 'gcr.io/cloud-builders/bazel'
   args: ["run", "--spawn_strategy=standalone", ":cos_customizer", "--", "--norun"]
+- name: 'busybox'
+  args: ["sed", "-i", "-e", "s|%s|'${_OEM_SIZE_TH}'|",
+         "testing/${_TEST}/preload_test.cfg"]
 - name: 'bazel:cos_customizer'
   args: ["start-image-build",
          "-build-context=testing/${_TEST}",
@@ -37,8 +43,8 @@ steps:
          "-project=$PROJECT_ID",
          "-image-name=preload-test-$BUILD_ID",
          "-image-project=$PROJECT_ID",
-         "-disk-size-gb=12",
-         "-oem-size=1G"]
+         "-disk-size-gb=${_DISK_SIZE}",
+         "-oem-size=${_OEM_SIZE}"]
 - name: 'gcr.io/compute-image-tools/daisy'
   args: ["-default_timeout=15m", "-project=$PROJECT_ID", "-zone=us-west1-b", "-var:image_name",
          "preload-test-$BUILD_ID", "-var:image_project", "$PROJECT_ID",
