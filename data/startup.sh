@@ -33,7 +33,6 @@ fatal() {
 }
 
 switch_root(){
-  trap 'fatal exiting due to errors' EXIT
   # Get ReclaimSDA3 input from metadata.
   # If needed, switch root partition to /dev/sda5 (rootB)
   local -r reclaim="$(/usr/share/google/get_metadata_value \
@@ -343,10 +342,10 @@ shrink_sda3(){
 
   echo "Checking whether need to shrink sda3..."
   # have shrinked sda3 or no need to shrink sda3
-  if [[ -e "${SDA3_CHECK_FILE}" || "${reclaim}" == false ]] {
+  if [[ -e "${SDA3_CHECK_FILE}" || "${reclaim}" == false ]]; then
     echo "Completed dealing with sda3."
     return
-  }
+  fi
   echo "Shrinking sda3..."
   touch "${SDA3_CHECK_FILE}"
   handle_disk_layout
@@ -403,6 +402,7 @@ prepare() {
 # build runs after Daisy step `resize-disk`
 build() {
   trap 'fatal exiting due to errors' EXIT
+  enter_workdir
   wait_daisy_logging
   echo "Downloading source artifacts from GCS..."
   fetch_user_ctx
