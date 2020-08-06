@@ -97,7 +97,6 @@ func HandleDiskLayout(disk string, statePartNum, oemPartNum int, oemSize string,
 				"input: disk=%q, statePartNum=%d, oemPartNum=%d, oemSize=%q, reclaimSDA3=%t, "+
 				"error msg: (%v)", disk, statePartNum, oemPartNum, oemSize, reclaimSDA3, err)
 		}
-		// startPointSector = sda3StartSector + (minSize * 8)
 		startPointSector = sda3StartSector + 2048 // +1M
 
 	} else {
@@ -155,14 +154,20 @@ func HandleDiskLayout(disk string, statePartNum, oemPartNum int, oemSize string,
 	if oldStateStartSector != newStateStartSector {
 		// Move the stateful partition. If the new position and the old position overlap too much,
 		// it will take hours to move the stateful partition. So relative distance is used.
-		var stateRelativeDis string
-		if oldStateStartSector > newStateStartSector {
-			stateRelativeDis = "-" + strconv.FormatUint(oldStateStartSector-newStateStartSector, 10)
-		} else {
-			stateRelativeDis = "+" + strconv.FormatUint(newStateStartSector-oldStateStartSector, 10)
-		}
+		// var stateRelativeDis string
+		// if oldStateStartSector > newStateStartSector {
+		// 	stateRelativeDis = "-" + strconv.FormatUint(oldStateStartSector-newStateStartSector, 10)
+		// } else {
+		// 	stateRelativeDis = "+" + strconv.FormatUint(newStateStartSector-oldStateStartSector, 10)
+		// }
 
-		if err := partutil.MovePartition(disk, statePartNum, stateRelativeDis); err != nil {
+		// if err := partutil.MovePartition(disk, statePartNum, stateRelativeDis); err != nil {
+		// 	return fmt.Errorf("error in moving stateful partition, "+
+		// 		"input: disk=%q, statePartNum=%d, oemPartNum=%d, oemSize=%q, reclaimSDA3=%t, "+
+		// 		"error msg: (%v)", disk, statePartNum, oemPartNum, oemSize, reclaimSDA3, err)
+		// }
+
+		if err := partutil.MovePartition(disk, statePartNum, strconv.FormatUint(newStateStartSector, 10)); err != nil {
 			return fmt.Errorf("error in moving stateful partition, "+
 				"input: disk=%q, statePartNum=%d, oemPartNum=%d, oemSize=%q, reclaimSDA3=%t, "+
 				"error msg: (%v)", disk, statePartNum, oemPartNum, oemSize, reclaimSDA3, err)

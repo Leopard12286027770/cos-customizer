@@ -23,8 +23,8 @@ set -o nounset
 
 
 PYTHON_IMG="python:2.7.15-alpine"
-LAYOUT_CHECK_FILE1="/mnt/stateful_partition/layout1"
-LAYOUT_CHECK_FILE2="/mnt/stateful_partition/layout2"
+SDA3_CHECK_FILE="/mnt/stateful_partition/sda3_check"
+LAYOUT_CHECK_FILE="/mnt/stateful_partition/layout_check"
 INPUT_DEV_NAME="persistent-disk-0"
 
 fatal() {
@@ -210,58 +210,21 @@ EOF
 }
 
 handle_disk_layout(){
-  # get user input from metadata
-  local -r oem_size="$(/usr/share/google/get_metadata_value \
-    attributes/OEMSize)"
-  local -r oem_fs_size_4k="$(/usr/share/google/get_metadata_value \
-    attributes/OEMFSSize4K)"
-  local -r reclaim="$(/usr/share/google/get_metadata_value \
-    attributes/ReclaimSDA3)"
-
-  echo "Checking whether need to change disk layout..."
-  if [[ -z "${oem_size}" ]] && [[ "${reclaim}" == false ]]; then 
-    echo "No request to change disk layout."
-    return
-  fi
-  # if to reclaim sda3, the vm will need to change partition table and reboot twice
-  if [[ -e "${LAYOUT_CHECK_FILE1}" && "${reclaim}" == false ]] || [[ -e "${LAYOUT_CHECK_FILE2}" ]]; then
-    # disk layout changed, need to resize the filesystem
-    if [[ -n "${oem_size}" ]]; then
-      echo "Resizing OEM partition filesystem..."
-      umount /dev/sda8
-      e2fsck -fp /dev/sda8
-      if [[ "${oem_fs_size_4k}" -eq "0" ]]; then
-        resize2fs /dev/sda8
-      else
-        resize2fs /dev/sda8 "${oem_fs_size_4k}"
-      fi
-      systemctl start usr-share-oem.mount
-    fi
-    fdisk -l
-    df -h
-    echo "Successfully modified disk layout."
-  else
-    if [[ -e "${LAYOUT_CHECK_FILE1}"  ]]; then 
-      touch "${LAYOUT_CHECK_FILE2}"
-    else
-      touch "${LAYOUT_CHECK_FILE1}"
-    fi
-    echo "Modifying disk layout..."
-    create_run_after_unmount_unit
-    cp builtin_ctx_dir/handle_disk_layout.bin /tmp/handle_disk_layout.bin
-    systemctl --no-block start last-run.service
-    stop_journald_service
-    echo "Rebooting..."
-    
-    # overwrite trap to avoid build failure triggered by reboot.
-    trap - EXIT
-    reboot
-    # keep it inside of this function until reboot kills the process
-    while :
-      do
-        sleep 1
-      done
-  fi  
+  echo "Modifying disk layout..."
+  create_run_after_unmount_unit
+  cp builtin_ctx_dir/handle_disk_layout.bin /tmp/handle_disk_layout.bin
+  systemctl --no-block start last-run.service
+  stop_journald_service
+  echo "Rebooting..."
+  
+  # overwrite trap to avoid build failure triggered by reboot.
+  trap - EXIT
+  reboot
+  # keep it inside of this function until reboot kills the process
+  while :
+    do
+      sleep 1
+    done
 }
 
 fetch_state_file() {
@@ -368,20 +331,82 @@ cleanup() {
   rm -rf /var/lib/systemd/*
   rm -rf /var/lib/update_engine/*
   rm -rf /var/lib/whitelist/*
-  rm -f "${LAYOUT_CHECK_FILE1}"
-  rm -f "${LAYOUT_CHECK_FILE2}"
+  rm -f "${SDA3_CHECK_FILE}"
+  rm -f "${LAYOUT_CHECK_FILE}"
   echo "Done cleaning up instance state."
 }
 
-main() {
+shrink_sda3(){
+  # get user input from metadata
+  local -r reclaim="$(/usr/share/google/get_metadata_value \
+    attributes/ReclaimSDA3)"
+
+  echo "Checking whether need to shrink sda3..."
+  # have shrinked sda3 or no need to shrink sda3
+  if [[ -e "${SDA3_CHECK_FILE}" || "${reclaim}" == false ]] {
+    echo "Completed dealing with sda3."
+    return
+  }
+  echo "Shrinking sda3..."
+  touch "${SDA3_CHECK_FILE}"
+  handle_disk_layout
+}
+
+move_partitions(){
+  # get user input from metadata
+  local -r oem_size="$(/usr/share/google/get_metadata_value \
+    attributes/OEMSize)"
+  local -r oem_fs_size_4k="$(/usr/share/google/get_metadata_value \
+    attributes/OEMFSSize4K)"
+  local -r reclaim="$(/usr/share/google/get_metadata_value \
+    attributes/ReclaimSDA3)"
+
+  echo "Checking whether need to change disk layout..."
+  if [[ -z "${oem_size}" ]] && [[ "${reclaim}" == false ]]; then 
+    echo "No request to change disk layout."
+    return
+  fi
+  # have changed disk layout.
+  if [[ -e "${LAYOUT_CHECK_FILE}" ]]; then
+    # oem extended, need to resize the file system.
+    if [[ -n "${oem_size}" ]]; then
+      echo "Resizing OEM partition file system..."
+      umount /dev/sda8
+      e2fsck -fp /dev/sda8
+      if [[ "${oem_fs_size_4k}" -eq "0" ]]; then
+        resize2fs /dev/sda8
+      else
+        resize2fs /dev/sda8 "${oem_fs_size_4k}"
+      fi
+      systemctl start usr-share-oem.mount
+    fi
+    fdisk -l
+    df -h
+    echo "Successfully modified disk layout."
+  else
+    touch "${LAYOUT_CHECK_FILE}"
+    handle_disk_layout
+  fi
+}
+
+# prepare runs before Daisy step `resize-disk`
+prepare() {
   trap 'fatal exiting due to errors' EXIT
+  switch_root
   enter_workdir
   setup
+  fetch_builtin_ctx
+  shrink_sda3
+  echo "Preparation done."
+}
+
+# build runs after Daisy step `resize-disk`
+build() {
+  trap 'fatal exiting due to errors' EXIT
   wait_daisy_logging
   echo "Downloading source artifacts from GCS..."
   fetch_user_ctx
-  fetch_builtin_ctx
-  handle_disk_layout
+  move_partitions
   fetch_state_file
   docker rmi "${PYTHON_IMG}" || :
   echo "Successfully downloaded source artifacts from GCS."
@@ -392,8 +417,8 @@ main() {
   cleanup
 }
 
-switch_root | sed "s/^/PrepareStatus: /"
-main 2>&1 | sed "s/^/BuildStatus: /"
+prepare 2>&1 | sed "s/^/PrepareStatus: /"
+build 2>&1 | sed "s/^/BuildStatus: /"
 trap - EXIT
 echo "BuildSucceeded: Build completed with no errors. Shutting down..."
 # We tell Daisy to check for serial logs every 2 seconds (see

@@ -70,7 +70,7 @@
           "SerialOutput": {
             "Port": 3,
             "FailureMatch": "BuildFailed:",
-            "SuccessMatch": "Done switching root partition",
+            "SuccessMatch": "Preparation done.",
             "StatusMatch": "PrepareStatus:"
           }
         }
