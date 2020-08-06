@@ -226,6 +226,10 @@ func TestFindLast4KSectorPasses(t *testing.T) {
 			testName: "LargeNum",
 			input:    987654316,
 			want:     987654312,
+		}, {
+			testName: "Self",
+			input:    256,
+			want:     256,
 		},
 	}
 

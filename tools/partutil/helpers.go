@@ -139,6 +139,7 @@ func GetPartUUID(partName string) (string, error) {
 }
 
 // FindLast4KSector returns the last 4K bytes aligned sector from start.
+// If input is a 4K aligned sector, return itself.
 func FindLast4KSector(start uint64) uint64 {
 	var mask uint64 = 7
 	return start & (^mask)
