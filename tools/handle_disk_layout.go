@@ -97,7 +97,8 @@ func HandleDiskLayout(disk string, statePartNum, oemPartNum int, oemSize string,
 				"input: disk=%q, statePartNum=%d, oemPartNum=%d, oemSize=%q, reclaimSDA3=%t, "+
 				"error msg: (%v)", disk, statePartNum, oemPartNum, oemSize, reclaimSDA3, err)
 		}
-		startPointSector = sda3StartSector + minSize
+		// startPointSector = sda3StartSector + (minSize * 8)
+		startPointSector = sda3StartSector + 2048 // +1M
 
 	} else {
 		// start point is the original start sector of the stateful partition.
@@ -123,6 +124,7 @@ func HandleDiskLayout(disk string, statePartNum, oemPartNum int, oemSize string,
 		}
 		// move the stateful partition to the start point.
 		if err := partutil.MovePartition(disk, statePartNum, strconv.FormatUint(startPointSector, 10)); err != nil {
+			// if err := partutil.MovePartition(disk, statePartNum, "-512M"); err != nil {
 			return fmt.Errorf("error in moving stateful partition, "+
 				"input: disk=%q, statePartNum=%d, oemPartNum=%d, oemSize=%q, reclaimSDA3=%t, "+
 				"error msg: (%v)", disk, statePartNum, oemPartNum, oemSize, reclaimSDA3, err)
@@ -143,11 +145,28 @@ func HandleDiskLayout(disk string, statePartNum, oemPartNum int, oemSize string,
 	// and shrink the OEM partition to make the new start 4k aligned.
 	newStateStartSector := partutil.FindLast4KSector(startPointSector + (newOEMSizeBytes >> 9))
 
-	// move the stateful partition.
-	if err := partutil.MovePartition(disk, statePartNum, strconv.FormatUint(newStateStartSector, 10)); err != nil {
-		return fmt.Errorf("error in moving stateful partition, "+
+	oldStateStartSector, err := partutil.ReadPartitionStart(disk, statePartNum)
+	if err != nil {
+		return fmt.Errorf("cannot read old stateful partition start, "+
 			"input: disk=%q, statePartNum=%d, oemPartNum=%d, oemSize=%q, reclaimSDA3=%t, "+
 			"error msg: (%v)", disk, statePartNum, oemPartNum, oemSize, reclaimSDA3, err)
+	}
+
+	if oldStateStartSector != newStateStartSector {
+		// Move the stateful partition. If the new position and the old position overlap too much,
+		// it will take hours to move the stateful partition. So relative distance is used.
+		var stateRelativeDis string
+		if oldStateStartSector > newStateStartSector {
+			stateRelativeDis = "-" + strconv.FormatUint(oldStateStartSector-newStateStartSector, 10)
+		} else {
+			stateRelativeDis = "+" + strconv.FormatUint(newStateStartSector-oldStateStartSector, 10)
+		}
+
+		if err := partutil.MovePartition(disk, statePartNum, stateRelativeDis); err != nil {
+			return fmt.Errorf("error in moving stateful partition, "+
+				"input: disk=%q, statePartNum=%d, oemPartNum=%d, oemSize=%q, reclaimSDA3=%t, "+
+				"error msg: (%v)", disk, statePartNum, oemPartNum, oemSize, reclaimSDA3, err)
+		}
 	}
 
 	// move OEM partition to the start point.

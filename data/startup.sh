@@ -217,7 +217,6 @@ handle_disk_layout(){
     attributes/OEMFSSize4K)"
   local -r reclaim="$(/usr/share/google/get_metadata_value \
     attributes/ReclaimSDA3)"
-  local -r sda3_size = "$(sudo fdisk -s /dev/sda3)"
 
   echo "Checking whether need to change disk layout..."
   if [[ -z "${oem_size}" ]] && [[ "${reclaim}" == false ]]; then 
@@ -249,7 +248,7 @@ handle_disk_layout(){
     fi
     echo "Modifying disk layout..."
     create_run_after_unmount_unit
-    mv builtin_ctx_dir/handle_disk_layout.bin /tmp/handle_disk_layout.bin
+    cp builtin_ctx_dir/handle_disk_layout.bin /tmp/handle_disk_layout.bin
     systemctl --no-block start last-run.service
     stop_journald_service
     echo "Rebooting..."
