@@ -88,12 +88,6 @@ func TestHandleDiskLayoutFails(t *testing.T) {
 			oemPartNum:   8,
 			size:         "+200K",
 		}, {
-			testName:     "InvalidSize5",
-			disk:         diskName,
-			statePartNum: 1,
-			oemPartNum:   8,
-			size:         "",
-		}, {
 			testName:     "TooLarge",
 			disk:         diskName,
 			statePartNum: 1,

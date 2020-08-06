@@ -22,7 +22,6 @@ go_library(
         "helpers.go",
         "move_partition.go",
         "grub_utils.go",
-        "minimize_partition.go",
     ],
     importpath = "cos-customizer/tools/partutil",
     visibility = ["//visibility:public"],
