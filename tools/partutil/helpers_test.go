@@ -74,6 +74,10 @@ func TestConvertSizeToBytesPasses(t *testing.T) {
 			testName: "ValidInputG",
 			input:    "321G",
 			want:     344671125504,
+		}, {
+			testName: "Zero",
+			input:    "0",
+			want:     0,
 		},
 	}
 

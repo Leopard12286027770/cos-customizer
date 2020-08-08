@@ -228,7 +228,12 @@ func validateOEM(buildConfig *config.Build) error {
 	if err != nil {
 		return fmt.Errorf("invalid format of oem-size: %q, error msg:(%v)", buildConfig.OEMSize, err)
 	}
-	if (uint64)(buildConfig.DiskSize) < imgSize+oemSizeGB {
+	//  if no disk-size-gb input, assume the default image size to be 10GB.
+	var diskSize uint64 = imgSize
+	if buildConfig.DiskSize != 0 {
+		diskSize = (uint64)(buildConfig.DiskSize)
+	}
+	if diskSize < imgSize+oemSizeGB {
 		return sizeError
 	}
 	// shrink OEM size input (rounded down) by 1M to deal with cases

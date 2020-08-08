@@ -48,4 +48,4 @@ steps:
   args: ["/workspace/testing/${_TEST}/run_test.sh"]
 options:
   machineType: 'N1_HIGHCPU_8'
-timeout: "7200s"
+timeout: "10800s"

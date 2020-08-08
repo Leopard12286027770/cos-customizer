@@ -14,6 +14,12 @@
 
 steps:
 - name: 'gcr.io/cloud-builders/gcloud'
-  args: ["builds", "submit", "--config=testing/extend_oem_test/extend_oem_test.yaml",
-         "--substitutions=_OEM_SIZE=10G,_DISK_SIZE=20,_OEM_SIZE_TH=8192", "."]
-timeout: "7200s"
+  args: ["builds", "submit", "--config=testing/seal_oem_test/seal_oem_test.yaml",
+         "--substitutions=_OEM_SIZE=50M,_DISK_SIZE=10,_OEM_SIZE_TH=40", "."]
+- name: 'gcr.io/cloud-builders/gcloud'
+  args: ["builds", "submit", "--config=testing/seal_oem_test/seal_oem_test.yaml",
+         "--substitutions=_OEM_SIZE=1G,_DISK_SIZE=12,_OEM_SIZE_TH=900", "."]
+- name: 'gcr.io/cloud-builders/gcloud'
+  args: ["builds", "submit", "--config=testing/seal_oem_test/seal_oem_test.yaml",
+         "--substitutions=_OEM_SIZE=2G,_DISK_SIZE=14,_OEM_SIZE_TH=1700", "."]                     
+timeout: "10800s"
