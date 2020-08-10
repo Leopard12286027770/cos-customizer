@@ -15,14 +15,14 @@
 steps:
 - name: 'gcr.io/cloud-builders/gcloud'
   args: ["builds", "submit", "--config=testing/gpu_test/gpu_test.yaml",
-         "--substitutions=_DRIVER_VERSION=390.46", "."]
+         "--substitutions=_DRIVER_VERSION=390.46","--async", "."]
 - name: 'gcr.io/cloud-builders/gcloud'
   args: ["builds", "submit", "--config=testing/gpu_test/gpu_test.yaml",
-         "--substitutions=_DRIVER_VERSION=396.26", "."]      
+         "--substitutions=_DRIVER_VERSION=396.26","--async", "."]      
 - name: 'gcr.io/cloud-builders/gcloud'
   args: ["builds", "submit", "--config=testing/gpu_test/gpu_test.yaml",
-         "--substitutions=_DRIVER_VERSION=396.37", "."]     
+         "--substitutions=_DRIVER_VERSION=396.37","--async", "."]     
 - name: 'gcr.io/cloud-builders/gcloud'
   args: ["builds", "submit", "--config=testing/gpu_test/gpu_test.yaml",
-         "--substitutions=_DRIVER_VERSION=396.44", "."]                
+         "--substitutions=_DRIVER_VERSION=396.44","--async", "."]                
 timeout: "10800s"

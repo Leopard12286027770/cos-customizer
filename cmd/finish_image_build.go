@@ -175,7 +175,7 @@ func validateOEM(buildConfig *config.Build) error {
 		}
 		// no need to seal the OEM partition.
 		// If the OEM partition is to be extended, the following must be true:
-		// disk-size >= imgSize + oem-size.
+		// disk-size >= imgSize + oem-size - reclaimed-size.
 		if buildConfig.ReclaimSDA3 {
 			sizeError = fmt.Errorf("'disk-size-gb' must be at least 'oem-size'- reclaimed space "+
 				"(%dMB) + image size (%dGB)", reclaimedMB, imgSize)
@@ -200,7 +200,7 @@ func validateOEM(buildConfig *config.Build) error {
 		// need extra space to seal the OEM partition.
 		// The OEM partition size should be doubled to store the
 		// hash tree of dm-verity. The following must be true:
-		// disk-size >= imgSize + oem-size x 2.
+		// disk-size >= imgSize + oem-size x 2 - reclaimed-size.
 		sizeError = fmt.Errorf("'disk-size-gb' must be at least 'oem-size' x 2 - reclaimed space "+
 			"(%dMB) + image size (%dGB)", reclaimedMB, imgSize)
 
